@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.EquipmentMapper">
+    <!--查询设备详情-->
+    <resultMap id="equipmentDetail" type="com.ryzw.housemanager.dto.EquipmentDetailDto">
+        <result column="equipment_id" property="equipmentId"></result>
+        <result column="yard_id" property="yardId"></result>
+        <result column="equipment_name" property="equipmentName"></result>
+        <result column="equipment_num" property="equipmentNum"></result>
+        <result column="equipment_charge" property="equipmentCharge"></result>
+        <result column="equipment_contact" property="equipmentContact"></result>
+        <result column="equipment_time" property="equipmentTime"></result>
+        <result column="equipment_code" property="equipmentCode"></result>
+        <result column="equipment_remark" property="equipmentRemark"></result>
+        <result column="equipment_type" property="equipmentType"></result>
+        <result column="equipment_brand" property="equipmentBrand"></result>
+        <collection property="buildIdList" ofType="java.lang.Long">
+            <id column="build_id"></id>
+        </collection>
+    </resultMap>
+    <!--查询设备信息详情-->
+    <select id="equipmentDetail" resultMap="equipmentDetail">
+        SELECT
+          e.*, eu.build_id
+        FROM
+          equipment e
+        LEFT JOIN equipmentUse eu ON e.equipment_id = eu.equipment_id
+        <where>
+            <if test="id != null ">
+                and e.equipment_id = #{id}
+            </if>
+        </where>
+    </select>
+
+    <!--查询某个楼栋下的最后几条设备信息列表-->
+    <select id="equipmentLast" resultType="com.ryzw.housemanager.entity.Equipment">
+        SELECT
+            e.equipment_name,
+            e.equipment_num,
+            e.equipment_charge,
+            e.equipment_contact,
+            e.equipment_code,
+            e.equipment_remark,
+            e.equipment_type,
+            e.equipment_brand,
+            e.equipment_time
+        FROM
+            equipment e
+        LEFT JOIN equipmentUse eu ON e.equipment_id = eu.equipment_id
+        <where>
+            <if test="id != null ">
+                and eu.build_id = #{id}
+            </if>
+        </where>
+        ORDER BY
+            e.equipment_time DESC
+        LIMIT 3
+    </select>
+
+</mapper>

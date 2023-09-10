@@ -1,0 +1,761 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.UnitMapper">
+
+    <!--查询一级单位和它下面的子级单位，并且按照一级单位进行分页，不需要查询条件-->
+    <select id="unitList" resultType="com.ryzw.housemanager.dto.UnitChildDto">
+        SELECT
+            U.unit_id,
+            U.unit_name,
+            T.unitType_name,
+            U.unit_complement,
+            U.unit_social_code,
+            U.unit_organization_code,
+            U.unit_pid,
+            U.unit_classify
+        FROM
+            unit U
+        LEFT JOIN unitType T ON U.unit_Type = T.unitType_id
+        order by U.unit_id desc
+    </select>
+
+    <!--查询一级单位和它下面的子级单位，并且按照一级单位进行分页，不需要查询条件-->
+    <select id="unitListByPage" resultType="com.ryzw.housemanager.dto.UnitChildDto">
+         SELECT
+            U.unit_id,
+            U.unit_name,
+            T.unitType_name,
+            U.unit_complement,
+            U.unit_social_code,
+            U.unit_organization_code,
+            U.unit_pid,
+            U.unit_classify
+        FROM
+            unit U
+        LEFT JOIN unitType T ON U.unit_Type = T.unitType_id
+        where U.unit_pid = 0
+        order by U.unit_id desc
+    </select>
+
+
+    <!--通过id来查询单位信息-->
+    <select id="findById" resultType="com.ryzw.housemanager.dto.UnitListDto">
+        SELECT
+        A.unit_id,
+        A.unit_name,
+        A.unit_Type,
+        A.unit_organization_code,
+        A.unit_social_code,
+        A.unit_charger,
+        A.unit_complement,
+        A.unit_classify,
+        B.unit_name AS superior,
+        A.unit_category,
+        A.unit_pid,
+        A.unit_grade,
+        A.office_level,
+        A.unit_work,
+        A.unit_deputy,
+        A.is_temp_unit,
+        A.worker_number,
+        A.remark
+        FROM
+        unit A
+        LEFT JOIN unit B ON A.unit_pid = B.unit_id
+        <where>
+            <if test="id != null and id != ''">
+                and A.unit_id = #{id}
+            </if>
+        </where>
+        order by A.unit_id desc
+    </select>
+
+    <!--通过单位名称和类型，分页查询单位信息，如果没有查询条件，则分页显示所有单位，不区分一二级-->
+    <select id="unitAll" resultType="com.ryzw.housemanager.dto.UnitListDto">
+        SELECT
+        A.unit_id,
+        A.unit_name,
+        A.unit_Type,
+        T.unitType_name,
+        A.unit_organization_code,
+        A.unit_social_code,
+        A.unit_charger,
+        A.unit_complement,
+        B.unit_name AS superior,
+        A.unit_pid,
+        A.unit_classify
+        FROM
+        unit A
+        LEFT JOIN unit B ON A.unit_pid = B.unit_id
+        LEFT JOIN unitType T ON A.unit_type = T.unitType_id
+        <where>
+            <if test="Unit.unitName != null and Unit.unitName != ''">
+                and A.unit_name like concat('%',#{Unit.unitName},'%')
+            </if>
+            <if test="Unit.unitType != null and Unit.unitType != ''">
+                and A.unit_Type = #{Unit.unitType}
+            </if>
+        </where>
+        order by A.unit_id desc
+    </select>
+
+    <select id="findByRoleUnit" resultType="java.util.Map">
+        SELECT
+        unit_id AS unitId,
+        unit_name AS unitName
+        FROM
+        unit
+        <where>
+            unit_id IN
+            <foreach collection="list" separator="," open="(" close=")" index="id" item="num">
+                #{num}
+            </foreach>
+        </where>
+    </select>
+
+    <!--查询根节点-->
+    <select id="unitPTree" resultType="com.ryzw.housemanager.dto.UnitTreeDto">
+         SELECT
+            U.unit_id,
+            U.unit_name,
+            U.unit_pid
+        FROM
+            unit U
+        where U.unit_pid = 0
+        order by U.unit_id desc
+    </select>
+
+    <!--查询所有节点-->
+    <select id="unitTree" resultType="com.ryzw.housemanager.dto.UnitTreeDto">
+        SELECT
+        u.unit_id,
+        u.unit_name,
+        u.unit_tree_id,
+        count(hu.housingUse_id) AS floorNum
+        FROM
+        unit u
+        left join use_unit ut on u.unit_id = ut.unit_id
+        LEFT JOIN housingUse hu ON hu.housingUse_id = ut.housingUse_id
+        where
+        u.unit_id in
+        <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+        GROUP BY
+        u.unit_id,
+        u.unit_name
+
+    </select>
+
+
+    <select id="allUnitTree" resultType="com.ryzw.housemanager.dto.AllUnitTreeDto">
+        select
+        u.unit_id,
+        u.unit_name,
+        u.unit_classify,
+        count(m.unit_id) as unit_pcount
+        from
+        unit u
+        left join unit m on u.unit_id = m.unit_pid
+        <where>
+            <if test="unitId != null">
+                and u.unit_pid = #{unitId}
+            </if>
+        </where>
+        group by u.unit_id
+    </select>
+
+    <select id="infinityTree" resultType="com.ryzw.housemanager.dto.AllUnitDto">
+        SELECT
+            unit_id,
+            unit_name,
+            unit_pid,
+            unit_classify
+        FROM
+            unit
+--         WHERE unit_classify != 0
+    </select>
+
+    <!--    单位报表查询-->
+    <resultMap id="unitReport" type="com.ryzw.housemanager.dto.UnitReportInfoDto">
+        <id column="unit_name" property="unitName"/>
+        <result column="unit_organization_code" property="unitOrganizationCode"/>
+        <result column="unit_social_code" property="unitSocialCode"/>
+        <result column="unit_charger" property="unitCharger"/>
+        <result column="unitType_name" property="unittypeName"/>
+        <result column="unit_complement" property="unitComplement"/>
+        <collection property="professionalName" ofType="java.lang.String">
+            <id column="professional_name" property="professionalName"></id>
+        </collection>
+        <collection property="administrativeRegion" ofType="com.ryzw.housemanager.dto.AdministrativeRegionDto">
+            <id column="region_name" property="regionName"></id>
+            <collection property="yardPositionInfo" ofType="com.ryzw.housemanager.dto.YardPositionInfoDto">
+                <id column="yard_position" property="yardPosition"></id>
+                <result column="yard_latitude" property="yardLatitude"></result>
+                <result column="yard_longitude" property="yardLongitude"></result>
+            </collection>
+        </collection>
+    </resultMap>
+
+    <!--单位报表查询-->
+    <select id="unitReport" resultMap="unitReport">
+        SELECT DISTINCT
+        u.unit_id,
+        u.unit_name,
+        u.unit_organization_code,
+        u.unit_social_code,
+        u.unit_charger,
+        ut.unitType_name,
+        u.unit_complement,
+        p.professional_name,
+        r.region_name,
+        y.yard_position,
+        y.yard_latitude,
+        y.yard_longitude
+        FROM
+        unit u
+        LEFT JOIN unitType ut ON ut.unitType_id = u.unit_Type
+        LEFT JOIN use_relationship ur ON ur.unit_id = u.unit_id
+        LEFT JOIN professional p ON p.professional_id = ur.professional_id
+        LEFT JOIN house h ON h.house_id = ur.house_id
+        LEFT JOIN houseType ht ON ht.houseType_id = h.houseType_id
+        LEFT JOIN housingUse hu ON hu.build_id = h.build_id
+        LEFT JOIN yard y ON y.yard_id = hu.yard_id
+        left join region r on y.region_id = r.region_id
+        <where>
+            <if test="unitId != null">
+                and u.unit_id = #{unitId}
+            </if>
+        </where>
+    </select>
+
+    <!--    查询房屋类型的面积-->
+    <select id="typeArea" resultType="com.ryzw.housemanager.dto.TypeAreaDto">
+        SELECT DISTINCT
+        ht.houseType_name,
+        SUM(h.house_use_area) AS typeArea
+        FROM
+        unit u
+        LEFT JOIN use_relationship ur ON ur.unit_id = u.unit_id
+        LEFT JOIN house h ON h.house_id = ur.house_id
+        LEFT JOIN houseType ht ON ht.houseType_id = h.houseType_id
+        <where>
+            <if test="unitId != null">
+                and u.unit_id = #{unitId}
+            </if>
+        </where>
+        GROUP BY
+        ht.houseType_id
+    </select>
+
+    <!--    下属单位信息信息报表查询-->
+    <select id="unitSubordinate" resultType="com.ryzw.housemanager.dto.UnitSubordinateDto">
+        SELECT DISTINCT
+        u.unit_id,
+        u.unit_organization_code,
+        u.unit_social_code,
+        u.unit_name,
+        u.unit_charger,
+        ut.unitType_name,
+        u.unit_grade,
+        GROUP_CONCAT(
+        y.yard_position SEPARATOR '；'
+        ) as unitPosition,
+        u.unit_classify,
+        u.unit_complement,
+        SUM(h.house_build_area) as buildArea,
+        SUM(h.house_use_area) as useArea
+        FROM
+        unit u
+        LEFT JOIN unitType ut ON ut.unitType_id = u.unit_Type
+        LEFT JOIN use_relationship ur ON ur.unit_id = u.unit_id
+        LEFT JOIN house h ON h.house_id = ur.house_id
+        LEFT JOIN housingUse hu ON hu.house_id = h.house_id
+        LEFT JOIN yard y ON y.yard_id = hu.yard_id
+        <where>
+            <if test="unitId.unitId != null">
+                and u.unit_id = #{unitId.unitId}
+            </if>
+        </where>
+        GROUP BY
+        u.unit_id
+        ORDER BY
+        u.unit_id DESC
+    </select>
+
+    <!--    查询重新分配单位下拉列表-->
+    <select id="reapportionUnitList" resultType="com.ryzw.housemanager.dto.ReapportionUnitListDto">
+        SELECT DISTINCT
+        u.unit_id,
+        u.unit_name,
+        ut.useunit_id
+        FROM
+        unit u
+        LEFT JOIN use_unit ut ON u.unit_id = ut.unit_id
+        <where>
+            <if test="unitId != null and unitId.size() > 0">
+                and
+                ut.unit_id in
+                <foreach collection="unitId" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+
+    </select>
+
+
+    <resultMap id="unitExcess" type="com.ryzw.housemanager.dto.UnitExcessDto">
+        <id column="unit_id" property="unitId"/>
+        <result column="unit_name" property="unitName"/>
+        <!--        <result column="unit_id" property="LeaderExcessDto"/>-->
+        <!--        <result column="unit_name" property="CommonExcessDto"/>-->
+        <discriminator javaType="int" column="is_leading">
+            <case value="0" resultMap="leaderExcess"/>
+            <case value="1" resultMap="commonExcess"/>
+        </discriminator>
+    </resultMap>
+
+    <resultMap id="leaderExcess" type="com.ryzw.housemanager.dto.LeaderExcessDto" extends="unitExcess">
+        <result column="leTotalUseArea" property="leTotalUseArea"/>
+        <result column="leTotalSpecifiedArea" property="leTotalSpecifiedArea"/>
+    </resultMap>
+
+    <resultMap id="commonExcess" type="com.ryzw.housemanager.dto.CommonExcessDto" extends="unitExcess">
+        <result column="coTotalUseArea" property="coTotalUseArea"/>
+        <result column="coTotalSpecifiedArea" property="coTotalSpecifiedArea"/>
+    </resultMap>
+
+
+    <select id="unitExcess" resultType="com.ryzw.housemanager.dto.ReapportionUnitListDto">
+        SELECT DISTINCT
+            u.unit_id,
+            u.unit_name
+        FROM
+            unit u
+            LEFT JOIN leadingOffice lo ON u.unit_id = lo.unit_id
+            LEFT JOIN house h ON h.house_id = lo.house_id
+            LEFT JOIN record r ON r.house_id = h.house_id
+            LEFT JOIN use_relationship ur ON ur.house_id = h.house_id
+            AND ur.unit_id = u.unit_id
+            LEFT JOIN professional p ON p.professional_id = ur.professional_id
+            LEFT JOIN housingUse hu ON hu.house_id = h.house_id
+        WHERE
+            h.houseType_id = 1
+            AND hu.is_use = 1
+
+    </select>
+
+    <select id="leaderExcess" resultMap="leaderExcess">
+        SELECT DISTINCT
+            u.unit_id,
+            u.unit_name,
+            SUM( h.house_use_area ) AS leTotalUseArea,
+            SUM( p.specified_area * ur.room_num ) AS leTotalSpecifiedArea
+        FROM
+            unit u
+            LEFT JOIN leadingOffice lo ON u.unit_id = lo.unit_id
+            LEFT JOIN house h ON h.house_id = lo.house_id
+            LEFT JOIN record r ON r.house_id = h.house_id
+            LEFT JOIN use_relationship ur ON ur.house_id = h.house_id
+            AND ur.unit_id = u.unit_id
+            LEFT JOIN professional p ON p.professional_id = ur.professional_id
+            LEFT JOIN housingUse hu ON hu.house_id = h.house_id
+        WHERE
+            lo.is_leading = 0
+            AND h.houseType_id = 1
+            AND hu.is_use = 1
+            GROUP BY
+            u.unit_id
+        ORDER BY
+            unit_id
+    </select>
+
+    <select id="commonExcess" resultMap="commonExcess">
+        SELECT DISTINCT
+            u.unit_id,
+            u.unit_name,
+            SUM( h.house_use_area ) AS coTotalUseArea,
+            SUM( p.specified_area * ur.room_num ) AS coTotalSpecifiedArea
+        FROM
+            unit u
+            LEFT JOIN leadingOffice lo ON u.unit_id = lo.unit_id
+            LEFT JOIN house h ON h.house_id = lo.house_id
+            LEFT JOIN record r ON r.house_id = h.house_id
+            LEFT JOIN use_relationship ur ON ur.house_id = h.house_id
+            AND ur.unit_id = u.unit_id
+            LEFT JOIN professional p ON p.professional_id = ur.professional_id
+            LEFT JOIN housingUse hu ON hu.house_id = h.house_id
+        WHERE
+            lo.is_leading = 1
+            AND h.houseType_id = 1
+            AND hu.is_use = 1
+        GROUP BY
+            u.unit_id
+        ORDER BY
+            unit_id
+    </select>
+
+    <resultMap id="excessInfo" type="com.ryzw.housemanager.dto.ExcessInfoDto">
+        <id column="unit_id" property="unitId"/>
+        <result column="unit_name" property="unitName"/>
+
+        <result column="t_exceed_area" property="tExceedArea"/>
+        <result column="t_use_area" property="tUseArea"/>
+        <result column="t_specified_area" property="tSpecifiedArea"/>
+        <result column="tExcessRatio" property="tExcessRatio"/>
+
+        <result column="p_exceed_area" property="pExceedArea"/>
+        <result column="p_use_area" property="pEseArea"/>
+        <result column="p_specified_area" property="pSpecifiedArea"/>
+        <result column="pExcessRatio" property="pExcessRatio"/>
+    </resultMap>
+
+    <select id="excessInfo" resultMap="excessInfo">
+        SELECT DISTINCT
+        u.unit_id,
+        u.unit_name,
+        lof.t_exceed_area,
+        lof.t_use_area,
+        lof.t_specified_area,
+        if(lof.t_specified_area &gt;0 ,lof.t_exceed_area/lof.t_specified_area , 0) AS tExcessRatio,
+        p.p_exceed_area,
+        p.p_use_area,
+        p.p_specified_area,
+        if(p.p_specified_area &gt;0 ,p.p_exceed_area/p.p_specified_area , 0) AS pExcessRatio
+        FROM
+        unit u
+        LEFT JOIN (
+        SELECT
+        temp.unit_id,
+        sum( IF ( exceed_area > 0, exceed_area, 0 ) ) AS t_exceed_area,
+        sum( temp.house_use_area ) AS t_use_area,
+        sum( temp.specified_area ) AS t_specified_area
+        FROM
+        (
+        SELECT
+        hu.house_id,
+        p.professional_id,
+        count( p.professional_id ),
+        p.specified_area,
+        h.house_use_area,
+        uu.unit_id,
+        ( h.house_use_area - p.specified_area ) AS exceed_area
+        FROM
+        housingUse hu
+        LEFT JOIN leadingOffice lo ON hu.house_id = lo.house_id
+        LEFT JOIN professional p ON lo.professional_id = p.professional_id
+        LEFT JOIN house h ON h.house_id = hu.house_id
+        LEFT JOIN use_unit uu ON uu.housingUse_id = hu.housingUse_id
+        WHERE
+        hu.is_use = 1
+        AND p.professional_id IS NOT NULL
+        AND lo.is_leading = 1
+        GROUP BY
+        hu.house_id,
+        p.professional_id,
+        uu.unit_id
+        ) temp
+        GROUP BY
+        temp.unit_id
+        ) AS lof ON u.unit_id = lof.unit_id
+        LEFT JOIN (
+        SELECT
+        temp.unit_id,
+        sum( IF ( exceed_area > 0, exceed_area, 0 ) ) AS p_exceed_area,
+        sum( temp.house_use_area ) AS p_use_area,
+        sum( temp.specified_area ) AS p_specified_area
+        FROM
+        (
+        SELECT
+        hu.house_id,
+        p.professional_id,
+        count( p.professional_id ) AS num,
+        p.specified_area,
+        h.house_use_area,
+        uu.unit_id,
+        ( h.house_use_area - p.specified_area * count( p.professional_id ) ) AS exceed_area
+        FROM
+        housingUse hu
+        LEFT JOIN leadingOffice lo ON hu.house_id = lo.house_id
+        LEFT JOIN professional p ON lo.professional_id = p.professional_id
+        LEFT JOIN house h ON h.house_id = hu.house_id
+        LEFT JOIN use_unit uu ON uu.housingUse_id = hu.housingUse_id
+        WHERE
+        hu.is_use = 1
+        AND p.professional_id IS NOT NULL
+        AND lo.is_leading = 0
+        GROUP BY
+        hu.house_id,
+        p.professional_id,
+        uu.unit_id
+        ) temp
+        GROUP BY
+        temp.unit_id
+        ) p ON u.unit_id = p.unit_id
+        <where>
+            <choose>
+                <when test="unitIds != null and unitIds.size() > 0">
+                    and
+                    u.unit_id in
+                    <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and
+                    u.unit_id = 0
+                </otherwise>
+            </choose>
+            <if test="excess.id != null">
+                AND u.unit_id = #{excess.id}
+            </if>
+        </where>
+        ORDER BY
+        u.unit_id
+    </select>
+
+    <!--查询单位的使用面积与附属用房面积-->
+    <select id="selectExcessUnit" resultType="com.ryzw.housemanager.dto.ExcessUnitDto">
+        SELECT
+        uu.unit_id,
+        u.unit_name,
+        IFNULL(sum(h.house_use_area),0) as houseUseAreaSum,
+        IFNULL((SELECT
+        sum(h.house_use_area)
+        FROM
+        housingUse hu
+        INNER JOIN (SELECT max(hu1.housingUse_id) as housingUse_id,house_id from housingUse hu1 GROUP BY house_id) as
+        hu2 on hu2.housingUse_id = hu.housingUse_id
+        LEFT JOIN use_unit uu1 on uu1.housingUse_id = hu2.housingUse_id
+        LEFT JOIN unit u on u.unit_id = uu1.unit_id
+        LEFT JOIN house h on h.house_id = hu2.house_id
+        where h.houseType_id = 4 and uu1.unit_id = uu.unit_id),0)
+        as fuShuAraeSum
+        FROM
+        housingUse hu
+        INNER JOIN (SELECT max(hu1.housingUse_id) as housingUse_id,house_id from housingUse hu1 GROUP BY house_id) as
+        hu2 on hu2.housingUse_id = hu.housingUse_id
+        LEFT JOIN use_unit uu on uu.housingUse_id = hu2.housingUse_id
+        LEFT JOIN unit u on u.unit_id = uu.unit_id
+        LEFT JOIN house h on h.house_id = hu2.house_id
+        <where>
+            h.houseType_id != 4 and uu.unit_id is not null and u.is_temp_unit = 0
+            <choose>
+                <when test="unitIds != null and unitIds.size() > 0">
+                    and
+                    uu.unit_id in
+                    <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and
+                    uu.unit_id = 0
+                </otherwise>
+            </choose>
+        </where>
+        GROUP BY uu.unit_id
+    </select>
+
+    <!--查询该单位下分布在不同楼栋的使用面积-->
+    <select id="getAreaByBuild" resultType="com.ryzw.housemanager.dto.CommonHouseTypeDto">
+        SELECT
+        sum(h.house_use_area) as houseUseAreaSum,
+        b.build_id
+        FROM
+        housingUse hu
+        INNER JOIN (SELECT max(hu1.housingUse_id) as housingUse_id,house_id from housingUse hu1 GROUP BY house_id) as
+        hu2 on hu2.housingUse_id = hu.housingUse_id
+        LEFT JOIN use_unit uu on uu.housingUse_id = hu2.housingUse_id
+        LEFT JOIN house h on h.house_id = hu2.house_id
+        LEFT JOIN build b on b.build_id = h.build_id
+        <where>
+            <if test="unitId != null">
+                AND uu.unit_id = #{unitId}
+            </if>
+            <choose>
+                <when test="unitIds != null and unitIds.size() > 0">
+                    and
+                    uu.unit_id in
+                    <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and
+                    uu.unit_id = 0
+                </otherwise>
+            </choose>
+            and  b.build_id is not null
+        </where>
+        GROUP BY b.build_id
+    </select>
+
+    <!--查询该单位下使用的办公室或服务或设备用房的使用面积之和-->
+    <select id="getAreaByUnit" resultType="java.math.BigDecimal">
+        SELECT
+        IFNULL(sum(h.house_use_area),0)
+        FROM
+        housingUse hu
+        INNER JOIN (SELECT max(hu1.housingUse_id) as housingUse_id,house_id from housingUse hu1 GROUP BY house_id) as
+        hu2 on hu2.housingUse_id = hu.housingUse_id
+        LEFT JOIN use_unit uu on uu.housingUse_id = hu2.housingUse_id
+        LEFT JOIN house h on h.house_id = hu2.house_id
+        <where>
+            <if test="type != null">
+                AND h.houseType_id = #{type}
+            </if>
+            <if test="unitId != null">
+                AND uu.unit_id = #{unitId}
+            </if>
+        </where>
+    </select>
+
+    <!--获取办公室用房核定面积-->
+    <select id="getStandardAreaByBanGong" resultType="java.math.BigDecimal">
+        SELECT
+        IFNULL(sum(up.professional_num*p.specified_area),0)
+        FROM
+        unit_professional up
+        LEFT JOIN professional p on p.professional_id = up.professional_id
+        <where>
+            <if test="unitId != null">
+                AND up.unit_id = #{unitId}
+            </if>
+        </where>
+    </select>
+
+    <!--查询编制信息和等级信息-->
+    <select id="getNumAndLevel" resultType="com.ryzw.housemanager.dto.ProNumAndLevelDto">
+        SELECT
+        up.*,
+        p.professional_level
+        FROM
+        unit_professional up
+        LEFT JOIN professional p ON p.professional_id = up.professional_id
+        <where>
+            <if test="id != null">
+                up.unit_id = #{id}
+            </if>
+        </where>
+
+    </select>
+
+    <!--获取用到该单位的楼栋Id集合-->
+    <select id="getBuildId" resultType="java.lang.Long">
+        SELECT DISTINCT
+        hu.build_id
+        FROM
+        use_unit ut
+        RIGHT join housingUse hu on hu.housingUse_id = ut.housingUse_id
+        <where>
+            <if test="unitId != null">
+                ut.unit_id = #{unitId}
+            </if>
+        </where>
+
+    </select>
+
+
+
+    <!--查询所有在使用房间的单位-->
+    <select id="selectAllUseUnit" resultType="com.ryzw.housemanager.dto.AllUseUnitDto">
+        SELECT
+            uu.unit_id,
+            u.unit_name,
+            ut.unitType_name,
+            u.unit_grade,
+            u.unit_complement
+        FROM
+            use_unit uu
+            LEFT JOIN housingUse hu on uu.housingUse_id = hu.housingUse_id
+            LEFT JOIN unit u on u.unit_id = uu.unit_id
+            LEFT JOIN unitType ut on ut.unitType_id = u.unit_Type
+            WHERE u.unit_name is not null
+            GROUP BY uu.unit_id
+    </select>
+
+    <!--获取面积明细数据MAP-->
+    <resultMap id="getAreaDetailMap" type="com.ryzw.housemanager.dto.AreaDetailByBuildDto">
+        <id column="build_id" property="buildId"/>
+        <result column="yard_position" property="yardPosition"/>
+        <result column="build_name" property="buildName"/>
+        <collection property="areaDetailByHouseDtoList" ofType="com.ryzw.housemanager.dto.AreaDetailByHouseDto">
+            <id column="houseType_id" property="houseTypeId"/>
+            <result column="houseType_name" property="houseTypeName"/>
+            <result column="houseUseAreaSum" property="houseUseAreaSum"/>
+        </collection>
+    </resultMap>
+
+    <!--获取面积明细数据-->
+    <select id="getAreaDetail" resultMap="getAreaDetailMap">
+        SELECT
+          ht.houseType_id,
+          ht.houseType_name,
+          IFNULL( sum( h.house_use_area ), 0 ) AS houseUseAreaSum,
+          b.build_id,
+          b.build_name,
+          y.yard_position
+        FROM
+            housingUse hu
+            INNER JOIN ( SELECT max( hu1.housingUse_id ) AS housingUse_id, house_id FROM housingUse hu1 GROUP BY house_id ) AS hu2 ON hu2.housingUse_id = hu.housingUse_id
+            LEFT JOIN use_unit uu ON uu.housingUse_id = hu2.housingUse_id
+            LEFT JOIN house h ON h.house_id = hu2.house_id
+            LEFT JOIN build b ON b.build_id = h.build_id
+            LEFT JOIN yard y on y.yard_id = b.yard_id
+            LEFT JOIN houseType ht on h.houseType_id = ht.houseType_id
+            <where>
+                <if test="unitId != null">
+                    uu.unit_id = #{unitId}
+                </if>
+                and ht.houseType_id is not null
+            </where>
+        GROUP BY
+            b.build_id,ht.houseType_id
+    </select>
+
+
+    <!--查询出租或出借房间面积-->
+    <select id="getRentOrLendArea" resultType="java.lang.Float">
+        SELECT
+        IFNULL( sum( h.house_use_area ), 0 ) AS useAreaSum
+        FROM
+            rent r
+            LEFT JOIN rent_relationship rs ON rs.rent_id = r.rent_id
+            LEFT JOIN housingUse hu ON hu.housingUse_id = rs.housingUse_id
+            INNER JOIN ( SELECT MAX( housingUse_id ) AS housingUse_id FROM housingUse GROUP BY house_id ) AS hs ON hs.housingUse_id = hu.housingUse_id
+            LEFT JOIN house h ON h.house_id = hu.house_id
+            LEFT JOIN build b on b.build_id = h.build_id
+            <where>
+                r.state = 1
+                AND hu.is_use = 1
+                <if test="buildId != null">
+                    AND b.property_unit_id = #{buildId}
+                </if>
+                <if test="flag != null">
+                    AND r.type = #{flag}
+                </if>
+            </where>
+
+    </select>
+
+    <!--查询闲置房间面积-->
+    <select id="getSpareArea" resultType="java.lang.Float">
+        SELECT
+        IFNULL(sum(h.house_use_area),0)
+        FROM
+        house h
+        LEFT JOIN housingUse hu ON h.house_id = hu.house_id
+        INNER JOIN ( SELECT max( housingUse_id ) AS housingUse_id FROM housingUse GROUP BY house_id ) hs ON hu.housingUse_id = hs.housingUse_id
+        LEFT JOIN build b ON h.build_id = b.build_id
+        <where>
+            hu.is_use = 0
+            <if test="buildId != null">
+                AND b.build_id = #{buildId}
+            </if>
+        </where>
+
+    </select>
+
+</mapper>

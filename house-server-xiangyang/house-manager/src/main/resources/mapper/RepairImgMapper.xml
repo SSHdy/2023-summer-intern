@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.RepairImgMapper">
+    <resultMap id="repairImgResultMap" type="com.ryzw.housemanager.entity.RepairImg">
+        <id column="repairImg_id" property="repairImgId"/>
+        <result column="repair_module_id" property="repairModuleId"/>
+        <result column="repairImg_type" property="repairImgType"/>
+        <result column="physical_address" property="physicalAddress"/>
+        <result column="virtual_address" property="virtualAddress"/>
+    </resultMap>
+
+    <select id="selectByRepairId" parameterType="java.lang.Long" resultMap="repairImgResultMap">
+        SELECT repairImg_id,repair_module_id,repairImg_type,physical_address,virtual_address FROM repairImg WHERE repair_module_id = #{repairModuleId,jdbcType=BIGINT}
+    </select>
+
+</mapper>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.RepairModuleMapper">
+
+    <!--质保期管理查询-->
+    <select id="repairQuality" resultType="com.ryzw.housemanager.dto.RepairQualityDto">
+        SELECT
+        rm.repair_module_position,
+        rm.position_str,
+        rm.repair_quality,
+        rm.repair_module_area,
+        ra.completion_time,
+        ra.accreditation_unit,
+        ra.contact_phone,
+        rp.repair_part_quality,
+        rp.repair_part_name
+        FROM
+        repair_module rm
+        LEFT JOIN repairApply ra ON ra.repair_apply_id = rm.repair_apply_id
+        LEFT JOIN repairParts rp ON rp.repair_parts_id = rm.repair_part_id
+        <where>
+            ra.completion_time is not null
+            and rm.is_repair = 2
+            <if test="Quality.repairPartsId != null ">
+                AND rp.repair_parts_id = #{Quality.repairPartsId}
+            </if>
+            <if test="Quality.repairModuleId != null ">
+                AND rm.repair_module_id = #{Quality.repairModuleId}
+            </if>
+        </where>
+        order by rm.repair_quality desc
+    </select>
+
+    <!--维修报表查询-->
+    <select id="repairRecordReport" resultType="com.ryzw.housemanager.dto.RepairRecordReportDto">
+        SELECT
+        rm.repair_module_id,
+        ra.repair_apply_id,
+        ra.completion_time,
+        ra.repair_project,
+        ra.final_sum,
+        ra.repair_unit_name,
+        rm.repair_module_target,
+        rm.position_str,
+        rp.repair_part_name,
+        b.warrant_num,
+        b.build_name
+        FROM
+        repair_module rm
+        LEFT JOIN repairApply ra ON ra.repair_apply_id = rm.repair_apply_id
+        LEFT JOIN build b ON b.build_id = rm.build_id
+        LEFT JOIN repairParts rp ON rp.repair_parts_id = rm.repair_part_id
+        <where>
+            and rm.is_repair = 2
+            <if test="RepairRecordReportVo.endTime != null ">
+                AND ra.completion_time &lt; #{RepairRecordReportVo.endTime}
+            </if>
+            <if test="RepairRecordReportVo.repairPartName != null and RepairRecordReportVo.repairPartName !=''">
+                AND rp.repair_part_name = #{RepairRecordReportVo.repairPartName}
+            </if>
+        </where>
+    </select>
+
+
+    <!--维修模块位置列表-->
+    <select id="getList" resultType="com.ryzw.housemanager.entity.RepairModule">
+        SELECT
+        rm.repair_module_id,
+        rm.repair_module_position
+        FROM
+        repair_module rm
+        LEFT JOIN repairApply ra ON ra.repair_apply_id = rm.repair_apply_id
+        <where>
+            and ra.repair_type = 2
+        </where>
+    </select>
+
+</mapper>

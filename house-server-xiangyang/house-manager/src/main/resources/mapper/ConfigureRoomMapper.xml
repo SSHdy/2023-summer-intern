@@ -1,0 +1,515 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.ConfigureRoomMapper">
+
+    <resultMap id="autoCondition" type="com.ryzw.housemanager.dto.AutoConditionDto">
+        <result column="elevators_number" property="elevatorsNumber"></result>
+        <result column="redistribution_unit_id" property="redistributionUnitId"></result>
+        <result column="room_number" property="roomNumber"></result>
+        <result column="room_area_min" property="roomAreaMin"></result>
+        <result column="room_area_max" property="roomAreaMax"></result>
+        <collection property="regionId" ofType="java.lang.Integer">
+            <id column="region_id"></id>
+        </collection>
+    </resultMap>
+
+    <!-- 查询自动分房的筛选条件列表-->
+    <select id="autoCondition" resultMap="autoCondition">
+        SELECT DISTINCT
+        crg.region_id,
+        c.elevators_number,
+        c.redistribution_unit_id,
+        cr.room_number,
+        cr.room_area_min,
+        cr.room_area_max
+        FROM
+        configure c
+        LEFT JOIN configure_room cr ON cr.configure_id = c.configure_id
+        LEFT JOIN configure_region crg ON crg.configure_id = c.configure_id
+        <where>
+            cr.room_number IS NOT NULL
+            <if test="con.id != null ">
+                and c.configure_id = #{con.id}
+            </if>
+        </where>
+    </select>
+
+    <resultMap id="autoAllocationRoom" type="com.ryzw.housemanager.dto.AutoAllocationRoomDto">
+        <result column="yard_id" property="yardId"></result>
+        <result column="yard_name" property="yardName"></result>
+        <result column="build_id" property="buildId"></result>
+        <result column="build_name" property="buildName"></result>
+        <result column="house_id" property="houseId"></result>
+        <result column="floor_name" property="floorName"></result>
+        <result column="house_number" property="houseNumber"></result>
+        <result column="house_use_area" property="houseUseArea"></result>
+        <collection property="unitList" column="house_id" ofType="com.ryzw.housemanager.dto.UnitReportDto"
+                    select="getAutoUnit">
+            <id column="unit_id" property="unitId"></id>
+            <result column="unit_name" property="unitName"></result>
+        </collection>
+    </resultMap>
+
+    <select id="getAutoUnit" resultType="com.ryzw.housemanager.dto.UnitReportDto">
+        SELECT distinct
+            u.unit_id,
+            u.unit_name
+        FROM
+            housingUse hu
+        INNER JOIN ( SELECT max( housingUse_id ) AS housingUse_id FROM housingUse GROUP BY house_id ) hs ON hu.housingUse_id = hs.housingUse_id
+        LEFT JOIN use_unit uu ON hs.housingUse_id = uu.housingUse_id
+        LEFT JOIN unit u ON u.unit_id = uu.unit_id
+        where  hu.house_id = #{house_id} and u.unit_id is not null
+    </select>
+
+    <!--    查询智能分房符合条件的房间-->
+    <select id="autoAllocationRoom" resultMap="autoAllocationRoom">
+        SELECT distinct
+        hu.yard_id,
+        y.yard_name,
+        y.region_id,
+        b.build_id,
+        b.build_name,
+        h.house_id,
+        h.floor_name,
+        h.house_number,
+        h.house_use_area
+        FROM
+        housingUse hu
+        INNER JOIN ( SELECT max( housingUse_id ) AS housingUse_id FROM housingUse GROUP BY house_id ) hs ON
+        hu.housingUse_id = hs.housingUse_id
+        LEFT JOIN use_unit uu ON hs.housingUse_id = uu.housingUse_id
+        LEFT JOIN yard y ON y.yard_id = hu.yard_id
+        LEFT JOIN build b ON b.build_id = hu.build_id
+        LEFT JOIN (select max(handle_id) as handle_id,build_id from handle_module group by build_id) hm on hm.build_id =
+        b.build_id
+        LEFT JOIN handle hl ON hl.handle_id = hm.handle_id
+        INNER JOIN house h ON h.house_id = hu.house_id AND
+        h.house_use_area BETWEEN #{auto.roomAreaMin} AND #{auto.roomAreaMax}
+        LEFT JOIN handle_way hw ON hw.house_id = h.house_id
+
+        <where>
+            ( hw.house_id IS NULL OR (hw.handle_way NOT IN ( 3, 4, 7 ) and hl.handle_way NOT IN ( 3, 4, 7 )) )
+            AND
+            (
+            hl.apply_status IN(0,2)
+            <if test="auto.regionId != null and auto.regionId.size() > 0">
+                AND
+                y.region_id in
+                <foreach collection="auto.regionId" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+
+            <if test="auto.elevatorsNumber != null">
+                AND b.elevator_num <![CDATA[>= ]]> #{auto.elevatorsNumber}
+            </if>
+
+            <if test="houseIds != null and houseIds.size() > 0">
+                AND
+                h.house_id not in
+                <foreach collection="houseIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+            OR hu.is_use = 0
+            <if test="auto.selfUnitId != null ">
+                or uu.unit_id = #{auto.selfUnitId}
+            </if>
+            <if test="auto.otherUnitId != null ">
+                or uu.unit_id = #{auto.otherUnitId}
+            </if>
+            )
+        </where>
+
+
+    </select>
+
+    <resultMap id="artificialAllocation" type="com.ryzw.housemanager.dto.ArtificialAllocationRoomDto">
+        <result column="yard_name" property="yardName"></result>
+        <result column="build_name" property="buildName"></result>
+        <result column="floor_name" property="floorName"></result>
+        <result column="house_id" property="houseId"></result>
+        <result column="house_number" property="houseNumber"></result>
+        <result column="house_use_area" property="houseUseArea"></result>
+        <result column="plan_id" property="planId"></result>
+        <result column="configure_plan_data_id" property="configurePlanDataId"></result>
+        <collection property="oldUnitList" column="configure_plan_data_id"
+                    ofType="com.ryzw.housemanager.dto.OldUnitListDto" select="getOldUnit">
+            <id column="unit_id" property="oldUnitId"></id>
+            <result column="unit_name" property="oldUnitName"></result>
+        </collection>
+        <collection property="newUnitList" column="configure_plan_data_id"
+                    ofType="com.ryzw.housemanager.dto.NewUnitListDto" select="getNewUnit">
+            <id column="unit_id" property="newUnitId"></id>
+            <result column="unit_name" property="newUnitName"></result>
+        </collection>
+
+    </resultMap>
+
+
+    <!--    以下为查询人工分房，符合条件的房间列表-->
+    <select id="getOldUnit" resultType="com.ryzw.housemanager.dto.OldUnitListDto">
+        SELECT DISTINCT
+            cpou.unit_id AS oldUnitId,
+            uo.unit_name AS oldUnitName
+        FROM
+            configure_plan_data cpd
+            LEFT JOIN configure_plan_old_unit cpou ON cpou.configure_plan_data_id = cpd.configure_plan_data_id
+            LEFT JOIN unit uo ON cpou.unit_id = uo.unit_id
+            LEFT JOIN house_history hh ON hh.house_id = cpd.house_id
+        WHERE
+            cpou.unit_id <![CDATA[ <> ]]> 0
+            and cpd.configure_plan_data_id = #{configure_plan_data_id}
+    </select>
+
+    <select id="getNewUnit" resultType="com.ryzw.housemanager.dto.NewUnitListDto">
+       SELECT DISTINCT
+            cpnu.unit_id AS newUnitId,
+            un.unit_name AS newUnitName
+        FROM
+            configure_plan_data cpd
+            LEFT JOIN configure_plan_new_unit cpnu ON cpd.configure_plan_data_id = cpnu.configure_plan_data_id
+            LEFT JOIN unit un ON un.unit_id = cpnu.unit_id
+            LEFT JOIN house_history hh ON hh.house_id = cpd.house_id
+        WHERE
+        cpnu.unit_id <![CDATA[ <> ]]> 0
+        AND cpd.configure_plan_data_id = #{configure_plan_data_id}
+
+    </select>
+
+    <!--  分页查询人工分房符合条件的数据-->
+    <select id="artificialAllocation" resultMap="artificialAllocation">
+        SELECT DISTINCT
+        y.yard_name,
+        b.build_name,
+        h.floor_name,
+        h.house_id,
+        h.house_number,
+        h.house_use_area,
+        cpd.plan_id,
+        cpd.configure_plan_data_id
+        FROM
+        configure_plan_data cpd
+        LEFT JOIN configure_plan_new_unit cpnu ON cpd.configure_plan_data_id = cpnu.configure_plan_data_id
+        LEFT JOIN unit un on un.unit_id = cpnu.unit_id
+        LEFT JOIN configure_plan_old_unit cpou ON cpou.configure_plan_data_id = cpd.configure_plan_data_id
+        LEFT JOIN unit uo on cpou.unit_id = uo.unit_id
+        LEFT JOIN yard y ON y.yard_id = cpd.yard_id
+        LEFT JOIN build b ON b.build_id = cpd.build_id
+        LEFT JOIN house h ON h.house_id = cpd.house_id
+        <where>
+            <if test="plan.planId != null">
+                cpd.plan_id = #{plan.planId}
+            </if>
+        </where>
+    </select>
+
+
+    <!--    以下为查询人工分房的房间信息-->
+
+    <resultMap id="allocationUnit" type="com.ryzw.housemanager.dto.AllocationUnitDto">
+        <id column="house_id" property="houseId"></id>
+        <result column="house_number" property="houseNumber"></result>
+        <result column="house_use_area" property="houseUseArea"></result>
+        <result column="houseType_name" property="housetypeName"></result>
+        <result column="is_use" property="isUse"></result>
+        <result column="rent_id" property="rent"></result>
+        <collection property="quondamUnitList" column="{houseId = house_id}"
+                    ofType="com.ryzw.housemanager.dto.UnitReportDto" select="quondamUnit">
+            <id column="useunit_id" property="useunitId"></id>
+            <result column="unit_id" property="unitId"></result>
+            <result column="unit_name" property="unitName"></result>
+        </collection>
+    </resultMap>
+
+    <resultMap id="configOldUnit" type="com.ryzw.housemanager.dto.OldUnitDto">
+        <id column="unit_id" property="unitId"></id>
+        <result column="unit_name" property="unitName"></result>
+        <result column="configure_plan_old_unit_id" property="configurePlanOldUnitId"></result>
+    </resultMap>
+
+    <resultMap id="configNewUnit" type="com.ryzw.housemanager.dto.NewUnitDto">
+        <id column="unit_id" property="unitId"></id>
+        <result column="unit_name" property="unitName"></result>
+        <collection property="configurePlanNewUnitId" ofType="java.lang.Long">
+            <result column="configure_plan_new_unit_id"></result>
+        </collection>
+    </resultMap>
+
+
+    <select id="quondamUnit" resultType="com.ryzw.housemanager.dto.UnitReportDto">
+        SELECT DISTINCT
+        ut.useunit_id,
+        u.unit_id,
+        u.unit_name
+        FROM
+        house_history hh
+        LEFT JOIN housingUse hu ON hu.house_id = hh.house_id
+        AND hu.is_use = 1
+        LEFT JOIN use_unit ut ON hu.housingUse_id = ut.housingUse_id
+        LEFT JOIN unit u ON ut.unit_id = u.unit_id
+        WHERE
+        ut.useunit_id is not null
+        <if test="houseId != null and houseId != '' ">
+            and hh.house_id = #{houseId}
+        </if>
+    </select>
+
+    <select id="configOldUnit" resultMap="configOldUnit">
+        SELECT DISTINCT
+        u.unit_id,
+        u.unit_name,
+        cpou.configure_plan_old_unit_id
+        FROM
+        configure_plan_data cpd
+        LEFT JOIN configure_plan_old_unit cpou ON cpou.configure_plan_data_id = cpd.configure_plan_data_id
+        LEFT JOIN unit u ON cpou.unit_id = u.unit_id
+        <where>
+            cpou.configure_plan_old_unit_id is not null and u.unit_id is not null
+            <if test="old.houseId != null and old.houseId != '' ">
+                and cpd.house_id = #{old.houseId}
+            </if>
+            <if test="old.planId != null ">
+                and cpd.plan_id = #{old.planId}
+            </if>
+        </where>
+    </select>
+
+    <select id="configNewUnit" resultMap="configNewUnit">
+        SELECT DISTINCT
+        cpnu.configure_plan_new_unit_id,
+        u.unit_id,
+        u.unit_name
+        FROM
+        configure_plan_data cpd
+        LEFT JOIN configure_plan_new_unit cpnu ON cpnu.configure_plan_data_id = cpd.configure_plan_data_id
+        LEFT JOIN unit u ON cpnu.unit_id = u.unit_id
+        <where>
+            cpnu.configure_plan_new_unit_id is not null and u.unit_id is not null
+            <if test="ne.planId != null">
+                and cpd.plan_id = #{ne.planId}
+            </if>
+            <if test="ne.houseId != null and ne.houseId != '' ">
+                and cpd.house_id = #{ne.houseId}
+            </if>
+        </where>
+    </select>
+
+    <select id="allocationUnit" resultMap="allocationUnit">
+        SELECT DISTINCT
+        hh.house_id,
+        hh.house_number,
+        hh.house_use_area,
+        ht.houseType_name,
+        hu.is_use,
+        rla.rent_id
+        FROM
+        housingUse hu
+        INNER JOIN ( SELECT max( housingUse_id ) AS housingUse_id FROM housingUse GROUP BY house_id ) hs ON
+        hu.housingUse_id = hs.housingUse_id
+        LEFT JOIN use_unit uu ON hs.housingUse_id = uu.housingUse_id
+        LEFT JOIN house_history hh ON hh.house_id = hu.house_id
+        LEFT JOIN houseType ht ON ht.houseType_id = hh.houseType_id
+        LEFT JOIN rent_relationship rla ON rla.housingUse_id = hu.housingUse_id
+        LEFT JOIN use_unit ut ON ut.housingUse_id = hu.housingUse_id
+        <where>
+            <!--            <if test="cp.planId != null">-->
+            <!--               and cpd.plan_id = #{cp.planId}-->
+            <!--            </if>-->
+            <if test="cp.houseId != null and cp.houseId != ''">
+                and hh.house_id = #{cp.houseId}
+            </if>
+        </where>
+    </select>
+
+
+    <select id="allocationConf" resultType="com.ryzw.housemanager.dto.AllocationUnitDto">
+        SELECT DISTINCT
+        cpd.configure_plan_data_id,
+        cpd.configure_id,
+        cpd.plan_id,
+        cpd.plan_type,
+        cpd.is_idle
+        FROM
+        housingUse hu
+        INNER JOIN ( SELECT max( housingUse_id ) AS housingUse_id FROM housingUse GROUP BY house_id ) hs ON
+        hu.housingUse_id = hs.housingUse_id
+        LEFT JOIN use_unit uu ON hs.housingUse_id = uu.housingUse_id
+        LEFT JOIN house_history hh ON hh.house_id = hu.house_id
+        LEFT JOIN houseType ht ON ht.houseType_id = hh.houseType_id
+        LEFT JOIN rent_relationship rla ON rla.housingUse_id = hu.housingUse_id
+        LEFT JOIN use_unit ut ON ut.housingUse_id = hu.housingUse_id
+        LEFT JOIN configure_plan_old_unit cpou ON cpou.unit_id = ut.unit_id
+        LEFT JOIN configure_plan_data cpd ON cpd.configure_plan_data_id = cpou.configure_plan_data_id
+        AND cpd.house_id = hh.house_id
+        LEFT JOIN configure_plan_new_unit cpnu ON cpnu.configure_plan_data_id = cpd.configure_plan_data_id
+        <where>
+            <if test="cp.planId != null">
+                and cpd.plan_id = #{cp.planId}
+            </if>
+            <if test="cp.houseId != null and cp.houseId != ''">
+                and hh.house_id = #{cp.houseId}
+            </if>
+        </where>
+    </select>
+
+
+    <!--    查询一层楼的房间信息-->
+    <select id="floorHouseInfo" resultType="com.ryzw.housemanager.dto.FloorHouseInfoDto">
+        SELECT DISTINCT
+        hu.build_id,
+        hu.floor_name,
+        hu.house_id,
+        hu.is_use,
+        cpd.is_idle
+        FROM
+        housingUse hu
+        INNER JOIN ( SELECT max( housingUse_id ) AS housingUse_id FROM housingUse GROUP BY house_id ) hs ON
+        hu.housingUse_id = hs.housingUse_id
+        LEFT JOIN use_unit uu ON hs.housingUse_id = uu.housingUse_id
+        LEFT JOIN house h ON h.house_id = hu.house_id
+        LEFT JOIN houseType ht ON ht.houseType_id = h.houseType_id
+        LEFT JOIN rent_relationship rla ON rla.housingUse_id = hu.housingUse_id
+        LEFT JOIN use_unit ut ON ut.housingUse_id = hu.housingUse_id
+        LEFT JOIN configure_plan_old_unit cpou ON cpou.unit_id = ut.unit_id
+        LEFT JOIN configure_plan_data cpd ON cpd.configure_plan_data_id = cpou.configure_plan_data_id
+        AND cpd.house_id = h.house_id
+        <where>
+            <if test="floor.buildId != null ">
+                and hu.build_id = #{floor.buildId}
+            </if>
+            <if test="floor.floorName != null ">
+                and hu.floor_name = #{floor.floorName}
+            </if>
+        </where>
+    </select>
+
+
+    <!--按照楼层查询人工分房的房间信息-->
+    <resultMap id="allocationFloor" type="com.ryzw.housemanager.dto.AllocationFloorCommonDto">
+        <id column="house_id" property="houseId"></id>
+        <association property="allocationUnit" javaType="com.ryzw.housemanager.dto.AllocationFloorDto">
+            <id column="house_id" property="houseId"></id>
+            <result column="house_number" property="houseNumber"></result>
+            <result column="house_use_area" property="houseUseArea"></result>
+            <result column="houseType_name" property="housetypeName"></result>
+            <result column="is_use" property="isUse"></result>
+            <result column="rent_id" property="rent"></result>
+            <result column="plan_id" property="planId"></result>
+            <result column="is_idle" property="isIdle"></result>
+            <result column="apply_status" property="applyStatus"></result>
+            <result column="handle_way" property="handleWay"></result>
+            <collection property="originalUnitList" ofType="com.ryzw.housemanager.dto.OriginalUnitDto">
+                <id column="originalUnitId" property="originalUnitId"></id>
+                <result column="originalUnitName" property="originalUnitName"></result>
+                <result column="useunit_id" property="useunitId"></result>
+            </collection>
+        </association>
+        <association property="allocationConf" javaType="com.ryzw.housemanager.dto.AllocationConfDto">
+            <id column="configure_plan_data_id" property="configurePlanDataId"></id>
+            <result column="configure_id" property="configureId"></result>
+            <result column="plan_id" property="planId"></result>
+            <result column="plan_type" property="planType"></result>
+            <result column="is_idle" property="isIdle"></result>
+        </association>
+        <collection property="oldConfUnitList" ofType="com.ryzw.housemanager.dto.OldConfUnitDto">
+            <id column="configure_plan_old_unit_id" property="configurePlanOldUnitId"></id>
+            <result column="oldUnitName" property="oldUnitName"></result>
+            <result column="oldUnitId" property="oldUnitId"/>
+        </collection>
+        <collection property="newConfUnitList" ofType="com.ryzw.housemanager.dto.NewConfUnitDto">
+            <id column="configure_plan_new_unit_id" property="configurePlanNewUnitId"></id>
+            <result column="newUnitName" property="newUnitName"></result>
+            <result column="newUnitId" property="newUnitId"/>
+        </collection>
+    </resultMap>
+
+    <!--按照楼层查询人工分房的房间信息-->
+    <select id="allocationFloor" resultMap="allocationFloor">
+        SELECT DISTINCT
+        h.house_id,
+        h.house_number,
+        h.house_use_area,
+        ht.houseType_name,
+        hu.is_use,
+        if(hu.is_use=1, rla.rent_id, Null) as rent_id,
+        cpd.configure_plan_data_id,
+        cpd.configure_id,
+        cpd.plan_id,
+        cpd.plan_type,
+        cpd.is_idle,
+        hd.apply_status,
+        hd.handle_way,
+        originalUnit.unit_id AS originalUnitId,
+        originalUnit.unit_name AS originalUnitName,
+        uu.useunit_id,
+        oldUnit.unit_id AS oldUnitId,
+        oldUnit.unit_name AS oldUnitName,
+        cpou.configure_plan_old_unit_id,
+        newUnit.unit_id AS newUnitId,
+        newUnit.unit_name AS newUnitName,
+        cpnu.configure_plan_new_unit_id
+        FROM
+        housingUse hu
+        INNER JOIN ( SELECT max( housingUse_id ) AS housingUse_id FROM housingUse GROUP BY house_id ) hs ON
+        hu.housingUse_id = hs.housingUse_id
+        LEFT JOIN use_unit uu ON hs.housingUse_id = uu.housingUse_id
+        LEFT JOIN house h ON h.house_id = hu.house_id
+        LEFT JOIN houseType ht ON ht.houseType_id = h.houseType_id
+        LEFT JOIN handle_module hm on hm.house_id = h.house_id
+        LEFT JOIN handle hd on hd.handle_id = hm.handle_id
+        LEFT JOIN rent_relationship rla ON rla.housingUse_id = hu.housingUse_id
+        LEFT JOIN use_unit ut ON ut.housingUse_id = hu.housingUse_id
+        LEFT JOIN unit originalUnit ON originalUnit.unit_id = ut.unit_id
+        LEFT JOIN configure_plan_data cpd ON hu.house_id = cpd.house_id
+        <if test="floor.planId != null ">
+            and cpd.plan_id = #{floor.planId}
+        </if>
+        LEFT JOIN configure_plan_old_unit cpou ON cpou.configure_plan_data_id = cpd.configure_plan_data_id
+        LEFT JOIN unit oldUnit ON cpou.unit_id = oldUnit.unit_id
+        LEFT JOIN configure_plan_new_unit cpnu ON cpnu.configure_plan_data_id = cpd.configure_plan_data_id
+        LEFT JOIN unit newUnit ON cpnu.unit_id = newUnit.unit_id
+        <where>
+            <if test="floor.buildId != null ">
+                and hu.build_id = #{floor.buildId}
+            </if>
+            <if test="floor.floorName != null ">
+                and hu.floor_name = #{floor.floorName}
+            </if>
+        </where>
+        ORDER BY
+        originalUnitId,
+        newUnitId ASC
+    </select>
+
+    <!--    查询每一层楼的房间信息-->
+    <select id="floorHouse" resultType="java.lang.String">
+        SELECT DISTINCT
+        hh.house_id
+        FROM
+        configure c
+        LEFT JOIN configure_plan_data cpd ON cpd.configure_id = c.configure_id
+        LEFT JOIN plan p ON p.plan_id = cpd.plan_id
+        AND p.configure_id = c.configure_id
+        LEFT JOIN house_history hh ON hh.house_id = cpd.house_id
+        <where>
+            (
+            ( cpd.plan_id IS NOT NULL AND cpd.plan_type = 2 AND c.apply_status = 3 )
+            OR
+            ( c.allocation_plan = 1 AND cpd.plan_type = 1 AND c.step = 4 )
+            )
+            <if test="floor.buildId != null ">
+                and hh.build_id = #{floor.buildId}
+            </if>
+            <if test="floor.floorNameList != null and floor.floorNameList.size()>0">
+                and hh.floor_name in
+                <foreach collection="floor.floorNameList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+
+        </where>
+    </select>
+
+</mapper>

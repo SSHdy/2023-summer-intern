@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.HousingUseMapper">
+
+    <!--  查询出减少房间对应的最大的housingUseId  -->
+    <select id="getMaxHouseId" resultType="java.lang.Long">
+        SELECT
+        max(housingUse_id)
+        FROM
+        housingUse
+        <where>
+            <if test="delHouseIdList != null and delHouseIdList.size>0">
+                and house_id in
+                <foreach collection="delHouseIdList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY house_id
+
+    </select>
+
+</mapper>

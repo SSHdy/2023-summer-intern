@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.UseUnitMapper">
+    <select id="houseUseUnit" resultType="int">
+        SELECT
+        count(uu.unit_id)
+        FROM
+        use_unit uu
+        LEFT JOIN housingUse hu ON uu.housingUse_id = hu.housingUse_id
+        <where>
+            is_use = 1
+            <if test="unitId != null">
+                and uu.unit_id = #{unitId}
+            </if>
+        </where>
+    </select>
+
+    <select id="useUnitIds" resultType="java.lang.Long">
+        SELECT DISTINCT
+            unit_id
+        FROM
+            use_unit
+        ORDER BY
+            unit_id DESC
+    </select>
+
+</mapper>

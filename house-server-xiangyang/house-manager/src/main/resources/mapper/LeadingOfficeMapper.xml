@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.LeadingOfficeMapper">
+
+<!--    领导人员办公室报表信息查询-->
+    <select id="officeReport" resultType="com.ryzw.housemanager.dto.LeadingOfficeReportDto">
+        SELECT DISTINCT
+            lo.leadingOffice_id,
+            b.build_name,
+            u.unit_name,
+            lo.leadingOffice_name,
+            lo.leadingOffice_workStatue,
+            p.professional_name,
+            p.professional_level,
+            h.house_number,
+            h.house_use_area
+        FROM
+            leadingOffice lo
+        LEFT JOIN unit u ON lo.unit_id = u.unit_id
+        LEFT JOIN house h ON h.house_id = lo.house_id
+        LEFT JOIN use_relationship ur ON ur.house_id = h.house_id
+        LEFT JOIN professional p ON p.professional_id = ur.professional_id
+        LEFT JOIN build b ON b.build_id = h.build_id
+        <where>
+            lo.is_leading = 0
+            <if test = "Report.leadingofficeName!= null and Report.leadingofficeName != ''">
+                and lo.leadingOffice_name like concat('%',#{Report.leadingofficeName},'%')
+            </if>
+            <if test = " Report.unitId != null ">
+                and u.unit_id = #{Report.unitId}
+            </if>
+            <if test="Report.leadingofficeWorkStatueId != null ">
+                and lo.leadingOffice_workStatue_id = #{Report.leadingofficeWorkStatueId}
+            </if>
+        </where>
+        order by lo.leadingOffice_id desc
+    </select>
+
+<!--    一般人员报表信息查询-->
+    <select id="commonReport" resultType="com.ryzw.housemanager.dto.LeadingOfficeReportDto">
+        SELECT DISTINCT
+        lo.leadingOffice_id,
+        b.build_name,
+        lo.leadingOffice_name,
+        lo.leadingOffice_workStatue,
+        p.professional_name,
+        p.professional_level,
+        h.house_number,
+        h.house_use_area
+        FROM
+        leadingOffice lo
+        LEFT JOIN house h ON h.house_id = lo.house_id
+        LEFT JOIN use_relationship ur ON ur.house_id = h.house_id
+        LEFT JOIN professional p ON p.professional_id = ur.professional_id
+        LEFT JOIN build b ON b.build_id = h.build_id
+        <where>
+            lo.is_leading = 1
+            <if test = "Report.leadingofficeName!= null and Report.leadingofficeName != ''">
+                and lo.leadingOffice_name like concat('%',#{Report.leadingofficeName},'%')
+            </if>
+
+            <if test="Report.leadingofficeWorkStatueId != null ">
+                and lo.leadingOffice_workStatue_id = #{Report.leadingofficeWorkStatueId}
+            </if>
+        </where>
+        order by lo.leadingOffice_id desc
+    </select>
+
+</mapper>

@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.RepairRemindMapper">
+
+    <!--维修提醒列表-->
+    <select id="selectRepairRemindList" resultType="com.ryzw.housemanager.dto.RepairRemindListDto">
+        SELECT
+        DISTINCT
+        rr.remaind_time,
+        (case when #{repairRemind.endDate} &lt; #{repairRemind.currDate} and #{repairRemind.currDate} &lt;
+        rr.remaind_time and
+        remaind_handle != 2 then 1 else 0 end) as remindState,
+        rr.repair_remind,
+        rr.position,
+        rr.repair_part,
+        rr.build_id,
+        rr.yard_id,
+        rr.house_id,
+        rr.responsible_person,
+        rr.contact_phone,
+        b.build_name,
+        y.yard_name,
+        h.floor_name,
+        h.house_number
+        FROM
+        repair_remind rr
+        LEFT JOIN repair_remind_unit rru ON rru.repair_remind_id = rr.repair_remind
+        LEFT JOIN build b ON b.build_id = rr.build_id
+        LEFT JOIN yard y ON y.yard_id = rr.yard_id
+        LEFT JOIN house h ON h.house_id = rr.house_id
+        LEFT JOIN unit u ON u.unit_id = rru.unit_id
+        <where>
+            <if test="repairRemind.yardId !=null and repairRemind.yardId !=''">
+                and y.yard_id = #{repairRemind.yardId}
+            </if>
+            <if test="repairRemind.buildId !=null and repairRemind.buildId !=''">
+                and b.build_id = #{repairRemind.buildId}
+            </if>
+            <if test="repairRemind.houseId !=null and repairRemind.houseId !=''">
+                and h.house_id = #{repairRemind.houseId}
+            </if>
+            <if test="repairRemind.floorName !=null and repairRemind.floorName !=''">
+                and h.floor_name = #{repairRemind.floorName}
+            </if>
+            <if test="repairRemind.unitId !=null and repairRemind.unitId !=''">
+                and rru.unit_id = #{repairRemind.unitId}
+            </if>
+            <choose>
+                <when test="repairRemind.remindState == 1">
+                    and DATE_SUB(rr.remaind_time,INTERVAL #{repairRemind.repairRemindDay} DAY) &lt;= curdate() and
+                    curdate() &lt;= rr.remaind_time
+                    and remaind_handle != 2
+                </when>
+                <when test="repairRemind.remindState == 0">
+                    and (DATE_SUB(rr.remaind_time,INTERVAL #{repairRemind.repairRemindDay} DAY) &gt;= curdate() or
+                    curdate() &gt;= rr.remaind_time)
+                    or remaind_handle = 2
+                </when>
+                <otherwise>
+                </otherwise>
+            </choose>
+        </where>
+        order by remindState desc,rr.remaind_time asc
+    </select>
+
+    <!--查询维修部位维修提醒数量-->
+    <select id="selectRemindCount" resultType="java.lang.Integer">
+        SELECT
+        count(rr.repair_remind)
+        FROM
+        repair_remind rr
+        <where>
+            <if test="repairRemind.repairRemindDay !=null">
+                and curdate() &lt;= rr.remaind_time and remaind_handle != 2
+            </if>
+            <if test="repairRemind.repairPart !=null">
+                and rr.repair_part = #{repairRemind.repairPart}
+            </if>
+        </where>
+    </select>
+
+    <!--查询维修提醒数量-->
+    <select id="repairRemindNum" resultType="java.lang.Integer">
+        SELECT
+        count(rr.repair_remind)
+        FROM
+        repair_remind rr
+        <where>
+            <if test="repairRemind.repairRemindDay !=null">
+                and DATE_SUB(rr.remaind_time,INTERVAL #{repairRemind.repairRemindDay} DAY) &lt;= curdate() and
+                curdate() &lt;= rr.remaind_time
+                and remaind_handle != 2
+            </if>
+        </where>
+    </select>
+
+
+    <!--查询相关维修记录,最近一条-->
+    <select id="selectRepairRecord" resultType="com.ryzw.housemanager.dto.RepairRecordDto">
+        SELECT
+        rm.yard_id,
+        rm.build_id,
+        rm.floor_name,
+        rm.house_id,
+        rm.repair_part_id,
+        max(ra.completion_time) as maxTime,
+        ra.contact_phone,
+        ra.responsible_person
+        FROM
+        repair_module rm
+        LEFT JOIN repairApply ra ON rm.repair_apply_id = ra.repair_apply_id
+        AND rm.is_repair != 1
+        <where>
+            <if test="yardId !=null">
+                and rm.yard_id = #{yardId}
+            </if>
+            <if test="buildId !=null">
+                and rm.build_id = #{buildId}
+            </if>
+            <if test="houseId !=null">
+                and rm.house_id = #{houseId}
+            </if>
+            <if test="repairPart !=null">
+                and rm.repair_part_id = #{repairPart}
+            </if>
+            and ra.completion_time is not null
+        </where>
+        group by
+        rm.yard_id,
+        rm.build_id,
+        rm.floor_name,
+        rm.house_id,
+        rm.repair_part_id,
+        ra.completion_time,
+        ra.responsible_person,
+        ra.contact_phone
+        limit 1
+    </select>
+
+
+    <resultMap id="RepairRecordMap" type="com.ryzw.housemanager.dto.RepairRecordDetailDto">
+        <id column="repair_apply_id" property="repairApplyId"/>
+        <result column="completion_time" property="completionTime"/>
+        <result column="contact_phone" property="contactPhone"/>
+        <result column="responsible_person" property="responsiblePerson"/>
+        <result column="repair_module_id" property="repairModuleId"/>
+        <result column="yard_name" property="yardName"/>
+        <result column="repair_part_name" property="repairPartName"/>
+        <result column="repair_module_position" property="repairModulePosition"/>
+        <result column="build_name" property="buildName"/>
+        <result column="house_number" property="houseNumber"/>
+        <result column="floor_name" property="floorName"/>
+        <result column="position_str" property="positionStr"/>
+        <result column="repair_part_quality" property="repairPartQuality"/>
+        <collection property="repairUnitNameList" ofType="java.lang.String">
+            <id column="unit_name" property="repairUnitNameList"/>
+        </collection>
+    </resultMap>
+
+    <!--查询相关维修记录-->
+    <select id="selectRepairRemindRecord" resultMap="RepairRecordMap">
+        SELECT
+        ra.repair_apply_id,
+        ra.completion_time,
+        ra.contact_phone,
+        ra.responsible_person,
+        ra.repair_unit_name,
+        rm.repair_module_id,
+        rp.repair_part_name,
+        rm.repair_module_position,
+        rm.position_str,
+        u.unit_name,
+        rp.repair_part_quality
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON ra.repair_apply_id = rm.repair_apply_id
+        LEFT JOIN repairParts rp ON rp.repair_parts_id = rm.repair_part_id
+        LEFT JOIN repair_unit ru ON ru.repair_apply_id = ra.repair_apply_id
+        LEFT JOIN unit u ON u.unit_id = ru.unit_id
+        <where>
+            <if test="yardId !=null and yardId !=''">
+                and rm.yard_id = #{yardId}
+            </if>
+            <if test="buildId !=null and buildId !=''">
+                and rm.build_id = #{buildId}
+            </if>
+            <if test="houseId !=null and houseId !=''">
+                and rm.house_id = #{houseId}
+            </if>
+            <if test="repairPart !=null and repairPart !=''">
+                and rm.repair_part_id = #{repairPart}
+            </if>
+            and rm.is_repair = 2
+            and ra.completion_time is not null
+        </where>
+        order by rm.repair_module_id desc
+        LIMIT 3
+    </select>
+
+    <resultMap id="repairRemindDetailMap" type="com.ryzw.housemanager.dto.RepairRemindDto">
+        <id column="repair_remind" property="repairRemind"/>
+        <result column="responsible_person" property="responsiblePerson"/>
+        <result column="contact_phone" property="contactPhone"/>
+        <result column="position" property="position"/>
+        <result column="repair_part_name" property="repairPartName"/>
+        <result column="remaind_time" property="remaindTime"/>
+        <result column="remaind_remark" property="remaind_remark"/>
+        <result column="remaind_handle" property="remaindHandle"/>
+        <result column="repair_goods" property="repairGoods"/>
+        <collection property="unitNameList" ofType="java.lang.String">
+            <id column="unit_name" property="unitNameList"/>
+        </collection>
+    </resultMap>
+
+    <!--查询维修提醒详情-->
+    <select id="selectRepairRemindDetail" resultMap="repairRemindDetailMap">
+        SELECT
+        rr.repair_remind,
+        rr.contact_phone,
+        rr.responsible_person,
+        rr.position,
+        rr.remaind_time,
+        rr.remaind_remark,
+        rr.remaind_handle,
+        repair_goods,
+        u.unit_name,
+        rp.repair_part_name
+        FROM
+        repair_remind rr
+        LEFT JOIN repair_remind_unit rru ON rru.repair_remind_id = rr.repair_remind
+        LEFT JOIN unit u ON u.unit_id = rru.unit_id
+        LEFT JOIN repairParts rp ON rp.repair_parts_id = rr.repair_part
+        <where>
+            <if test="repairRemindId != null and repairRemindId != ''">
+                and rr.repair_remind = #{repairRemindId}
+            </if>
+        </where>
+    </select>
+
+
+</mapper>

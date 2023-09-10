@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.SpecialInspectionMapper">
+
+    <!--  专项巡查信息列表  -->
+    <select id="specialList" resultType="com.ryzw.housemanager.dto.SpecialListDto">
+        SELECT
+            sp.special_inspection_id,
+            sp.special_inspection_user_id,
+            sp.special_inspection_user_name,
+            sp.special_inspection_time,
+            sp.special_inspection_result,
+            sp.special_inspection_problem,
+            sp.special_inspection_rectify_comments,
+            sp.special_inspection_rectify_time,
+            sp.special_inspection_points,
+            sp.special_inspection_rectify_state,
+            sp.special_inspection_rectify_result,
+            u.unit_name,
+            y.yard_name,
+            b.build_name
+        FROM
+            special_inspection AS sp
+            LEFT JOIN unit AS u ON u.unit_id = sp.special_inspection_unit_id
+            LEFT JOIN yard AS y ON y.yard_id = sp.special_inspection_yard_id
+            LEFT JOIN build AS b ON b.build_id = sp.special_inspection_build_id
+        <where>
+            <if test="inspection.unitId != null">
+                and sp.special_inspection_unit_id = #{inspection.unitId}
+            </if>
+
+            <if test="inspection.yardIds != null and inspection.yardIds.size() > 0 ">
+                and y.yard_id in
+                <foreach collection="inspection.yardIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+
+            <if test="inspection.buildIds != null and inspection.buildIds.size()> 0">
+                and b.build_id in
+                <foreach collection="inspection.buildIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+
+        </where>
+    </select>
+
+    <!--  专项检查详情  -->
+    <select id="specialDetail" resultType="com.ryzw.housemanager.dto.SpecialDetailDto">
+        SELECT
+            sp.special_inspection_id,
+            sp.special_inspection_user_id,
+            sp.special_inspection_user_name,
+            sp.special_inspection_time,
+            sp.special_inspection_result,
+            sp.special_inspection_problem,
+            sp.special_inspection_rectify_comments,
+            sp.special_inspection_rectify_time,
+            sp.special_inspection_points,
+            sp.special_inspection_rectify_state,
+            sp.special_inspection_rectify_result,
+            u.unit_id,
+            u.unit_name,
+            y.yard_id,
+            y.yard_name,
+            b.build_id,
+            b.build_name
+        FROM
+            special_inspection AS sp
+            LEFT JOIN unit AS u ON u.unit_id = sp.special_inspection_unit_id
+            LEFT JOIN yard AS y ON y.yard_id = sp.special_inspection_yard_id
+            LEFT JOIN build AS b ON b.build_id = sp.special_inspection_build_id
+        <where>
+           <if test="id.id != null">
+               and sp.special_inspection_id = #{id.id}
+           </if>
+        </where>
+    </select>
+
+</mapper>

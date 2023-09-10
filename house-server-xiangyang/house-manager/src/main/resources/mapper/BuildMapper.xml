@@ -1,0 +1,674 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.BuildMapper">
+    <resultMap id="floorImgBuildResultMap" type="com.ryzw.housemanager.dto.BuildDetailDto">
+        <id column="build_id" property="buildId"/>
+        <result column="out_rent_id" property="outRentId"/>
+        <result column="is_rent" property="isRent"/>
+        <result column="rent_unit" property="rentUnit"/>
+        <result column="rent_money" property="rentMoney"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="finance_remark" property="financeRemark"/>
+        <result column="yard_id" property="yardId"/>
+        <result column="yard_name" property="yardName"/>
+        <result column="build_name" property="buildName"/>
+        <result column="build_area" property="buildArea"/>
+        <result column="build_date" property="buildDate"/>
+        <result column="builder" property="builder"/>
+        <result column="house_property_number" property="housePropertyNumber"/>
+        <result column="elevator_num" property="elevatorNum"/>
+        <result column="property_unit_id" property="propertyUnitId"/>
+        <result column="overground_floor" property="overgroundFloor"/>
+        <result column="underground_floor" property="undergroundFloor"/>
+        <result column="obtain_way" property="obtainWay"/>
+        <result column="build_certificate" property="buildCertificate"/>
+        <result column="covered_area" property="coveredArea"/>
+        <result column="loss_grade" property="lossGrade"/>
+        <result column="structure_type" property="structureType"/>
+        <result column="warrant_num" property="warrantNum"/>
+        <result column="warrant_person" property="warrantPerson"/>
+        <result column="warrant_remark" property="warrantRemark"/>
+        <result column="assets_value" property="assetsValue"/>
+        <result column="civil_defence_area" property="civilDefenceArea"/>
+        <result column="build_remark" property="buildRemark"/>
+        <result column="build_longitude" property="buildLongitude"/>
+        <result column="build_latitude" property="buildLatitude"/>
+        <result column="yard_position" property="yardPosition"></result>
+        <result column="region_name" property="yardAdministrativeRegion"></result>
+        <result column="handle_num" property="handleNum"></result>
+        <collection property="floorImg" ofType="com.ryzw.housemanager.dto.FloorImgDto">
+            <id column="floorImg_id" property="floorimgId"></id>
+            <result column="floor_id" property="floorId"></result>
+            <result column="floorImg_url" property="floorimgUrl"></result>
+            <result column="floor_virtual_url" property="floorVirtualUrl"></result>
+        </collection>
+        <collection property="floorDrawingDtoList" ofType="com.ryzw.housemanager.dto.FloorDrawingDto">
+            <id column="floorDrawing_id" property="floordrawingId"></id>
+            <result column="floorDrawing_url" property="floordrawingUrl"></result>
+            <result column="floorDrawing_virtual_url" property="floordrawingVirtualUrl"></result>
+            <result column="floorDrawing_file_name" property="floordrawingFileName"></result>
+        </collection>
+    </resultMap>
+
+    <resultMap id="buildUnit" type="com.ryzw.housemanager.dto.BuildUnitDto">
+        <id column="build_id" property="buildId"></id>
+        <result column="yard_id" property="yardId"></result>
+        <result column="build_name" property="buildName"></result>
+        <result column="floor_name" property="floorName"></result>
+        <result column="house_id" property="houseId"></result>
+        <result column="house_number" property="houseNumber"></result>
+        <result column="yard_name" property="yardName"></result>
+        <result column="apply_status" property="applyStatus"></result>
+        <result column="handle_way" property="handleWay"></result>
+    </resultMap>
+
+
+    <resultMap id="buildFloorDto" type="com.ryzw.housemanager.dto.BuildFloorDto">
+        <result column="yard_id" property="yardId"></result>
+        <result column="build_id" property="buildId"></result>
+        <result column="build_name" property="buildName"></result>
+        <result column="overground_floor" property="overgroundFloor"></result>
+        <result column="underground_floor" property="undergroundFloor"></result>
+        <collection property="floorName" ofType="java.lang.Integer">
+            <id column="floor_name"></id>
+        </collection>
+    </resultMap>
+
+    <select id="detail" resultMap="floorImgBuildResultMap">
+        SELECT DISTINCT
+        fd.floorDrawing_id,
+        fd.floorDrawing_url,
+        fd.floorDrawing_virtual_url,
+        fd.floorDrawing_file_name,
+        ou.out_rent_id,
+        ou.is_rent,
+        ou.rent_unit,
+        ou.rent_money,
+        ou.start_time,
+        ou.end_time,
+        ou.finance_remark,
+        b.build_id,
+        b.yard_id,
+        b.build_name,
+        b.build_area,
+        b.build_date,
+        b.builder,
+        b.property_unit_id,
+        b.overground_floor,
+        b.underground_floor,
+        b.obtain_way,
+        b.build_certificate,
+        b.covered_area,
+        b.loss_grade,
+        b.structure_type,
+        b.warrant_num,
+        b.warrant_person,
+        b.warrant_remark,
+        b.assets_value,
+        b.civil_defence_area,
+        b.build_remark,
+        b.build_longitude,
+        b.build_latitude,
+        b.elevator_num,
+        b.house_property_number,
+        f.floorImg_id,
+        f.floor_id,
+        f.floorImg_url,
+        f.floor_virtual_url,
+        y.yard_position,
+        r.region_name,
+        count( h.handle_id ) AS handle_num
+        FROM
+        build b
+        LEFT JOIN floorDrawing fd ON fd.build_id = b.build_id
+        LEFT JOIN floorImg f ON b.build_id = f.floor_id
+        LEFT JOIN yard y ON b.yard_id = y.yard_id
+        LEFT JOIN region r on r.region_id = y.region_id
+        LEFT JOIN out_rent ou ON ou.build_id = b.build_id
+        LEFT JOIN handle_module hm ON b.build_id = hm.build_id
+        LEFT JOIN handle h ON hm.handle_id = h.handle_id
+        AND h.apply_status != 2
+        <where>
+            <if test="buildId!= null and buildId != ''">
+                b.build_id = #{buildId}
+            </if>
+        </where>
+        group by ou.out_rent_id, f.floorImg_id,fd.floorDrawing_id
+    </select>
+
+    <select id="list" resultType="com.ryzw.housemanager.dto.BuildDto">
+        SELECT
+        b.build_id,
+        y.yard_name,
+        b.build_name,
+        b.build_area,
+        b.build_date,
+        b.builder,
+        u.unit_name,
+        b.overground_floor,
+        b.underground_floor,
+        b.structure_type,
+        b.build_longitude,
+        b.build_latitude,
+        b.elevator_num,
+        house_property_number
+        FROM
+        build b
+        LEFT JOIN yard y ON b.yard_id = y.yard_id
+        LEFT JOIN unit u ON u.unit_id = b.property_unit_id
+        <where>
+            <if test="Build.buildName!= null and Build.buildName != ''">
+                and b.build_name like concat('%',#{Build.buildName},'%')
+            </if>
+            <if test="Build.yardId!= null and Build.yardId != ''">
+                and b.yard_id = #{Build.yardId}
+            </if>
+        </where>
+        order by b.build_id desc
+    </select>
+
+    <select id="selectBuildAndEquipment" resultType="com.ryzw.housemanager.dto.EquipmentBuildDto">
+        SELECT
+        a.equipment_id,
+        a.equipment_name,
+        a.yard_id,
+        a.equipment_num,
+        a.equipment_charge,
+        a.equipment_contact,
+        a.equipment_time,
+        a.equipment_code,
+        a.equipment_remark,
+        a.equipment_type,
+        a.equipment_brand,
+        b.build_id
+        FROM equipment a
+        LEFT JOIN equipmentUse b ON a.equipment_id = b.equipment_id
+        <where>
+            <if test="build.yardId != null and build.yardId != ''">
+                a.yard_id = #{build.yardId}
+            </if>
+            <if test="build.buildId != null and build.buildId != ''">
+                AND b.build_id = #{build.buildId}
+            </if>
+        </where>
+    </select>
+
+
+    <!-- 查询 -->
+    <select id="sumRoomNum" resultType="java.lang.Integer">
+        SELECT
+        SUM(room_num)
+        FROM
+        use_relationship a
+        LEFT JOIN house b ON a.house_id = b.house_id
+        LEFT JOIN housingUse c ON a.house_id = b.house_id
+        <where>
+            <if test="build.yardId != null and build.yardId != ''">
+                c.yard_id = #{build.yardId}
+            </if>
+            <if test="build.buildId != null and build.buildId != ''">
+                AND b.build_id = #{build.buildId}
+            </if>
+        </where>
+    </select>
+
+
+    <!--查询某个楼栋下所有的单位列表-->
+    <select id="unitNameList" resultType="java.lang.String">
+        SELECT DISTINCT
+        u.unit_name
+        FROM
+        use_unit ut
+--         RIGHT join housingUse hu on hu.housingUse_id = ut.housingUse_id
+        RIGHT join (SELECT max( housingUse_id ) AS housingUse_id,build_id FROM housingUse GROUP BY house_id,build_id) hu on ut.housingUse_id = hu.housingUse_id
+        RIGHT JOIN unit u ON u.unit_id = ut.unit_id
+        <where>
+            u.unit_classify > 0
+            <if test="build.id != null ">
+                AND hu.build_id = #{build.id}
+            </if>
+        </where>
+
+    </select>
+
+    <!--查询某个楼栋下承租方名称列表-->
+    <select id="renterNameList" resultType="java.lang.String">
+        select distinct r.renter
+        from rent r
+        left join rent_relationship rs
+        on r.rent_id = rs.rent_id
+        left join housingUse hu
+        on rs.housingUse_id = hu.housingUse_id
+        <where>
+            and hu.is_use = 1
+            <if test="build.id != null ">
+               and hu.build_id = #{build.id}
+            </if>
+        </where>
+    </select>
+
+    <!--查询某栋楼入驻人员数量-->
+    <select id="buildPersonNum" resultType="java.lang.Integer">
+        SELECT DISTINCT
+        SUM(ur.room_num)
+        FROM
+        use_relationship ur
+        left join housingUse hu on ur.house_id = hu.house_id
+        LEFT JOIN house h ON hu.house_id = h.house_id
+        <where>
+            hu.is_use = 1
+            <if test="build.id != null ">
+                AND h.build_id = #{build.id}
+            </if>
+        </where>
+    </select>
+
+    <!--查询某栋楼办公室的数量-->
+    <select id="buildOfficeNum" resultType="java.lang.Integer">
+        SELECT
+        COUNT(*) AS officeNum
+        FROM
+        house h
+        LEFT JOIN houseType ht ON h.houseType_id = ht.houseType_id
+        <where>
+            <if test=" build.id != null ">
+                AND h.build_id = #{build.id}
+            </if>
+            AND ht.houseType_name LIKE "%办公室用房%"
+        </where>
+
+    </select>
+
+    <!--查询某栋楼出租用房的面积-->
+    <select id="rentArea" resultType="java.lang.Float">
+        SELECT
+        SUM(h.house_use_area) AS totalArea
+        FROM
+        rent r
+        left join rent_relationship rs on r.rent_id = rs.rent_id
+        LEFT JOIN housingUse hu ON rs.housingUse_id = hu.housingUse_id
+        LEFT JOIN house h ON hu.house_id = h.house_id
+        <where>
+            hu.is_use= 1
+            <if test=" build.id != null ">
+                AND h.build_id = #{build.id}
+            </if>
+        </where>
+    </select>
+
+    <!--查询某栋楼闲置用房的面积-->
+    <select id="spareArea" resultType="java.lang.Float">
+        SELECT
+        SUM(h.house_use_area) AS totalArea
+        FROM
+        house h
+        LEFT JOIN housingUse hu
+        ON h.house_id = hu.house_id and hu.is_use = 1
+        WHERE
+        hu.house_id IS NULL
+        <if test="build.id != null">
+            and h.build_id = #{build.id}
+        </if>
+    </select>
+
+    <!--查询某栋楼自用房间面积-->
+    <select id="selfUseArea" resultType="java.lang.Float">
+        SELECT
+        SUM(h.house_use_area) AS totalArea
+        FROM
+        use_unit ut
+        LEFT JOIN housingUse hu ON ut.housingUse_id = hu.housingUse_id
+        LEFT JOIN house h ON hu.house_id = h.house_id
+        <where>
+            hu.is_use =1
+            <if test=" build.id != null ">
+                AND h.build_id = #{build.id}
+            </if>
+        </where>
+    </select>
+
+    <!--查询用户权限下的所有楼栋-->
+    <select id="buildUnit" resultMap="buildUnit">
+        SELECT
+        hu.yard_id,
+        hu.build_id,
+        b.build_name,
+        count(hu.house_id) AS floor_Name,
+        y.yard_name
+        FROM
+        housingUse hu
+        left join use_unit u on hu.housingUse_id = u.housingUse_id
+        LEFT JOIN build b ON hu.build_id = b.build_id
+        left join yard y on hu.yard_id = y.yard_id
+        <where>
+            <if test="yardId != null">
+                AND hu.yard_id = #{yardId}
+            </if>
+            <if test="unitIds != null and unitIds.size() > 0">
+                and
+                u.unit_id in
+                <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        group by hu.build_id
+        ORDER BY
+        hu.build_id ASC
+    </select>
+
+    <!--查询用户权限下关联合同的所有楼栋-->
+    <select id="buildContract" resultMap="buildUnit">
+        SELECT
+        hu.yard_id,
+        y.yard_name,
+        hu.build_id,
+        b.build_name,
+        count( hu.house_id ) AS floor_Name
+        FROM
+        housingUse hu
+        INNER JOIN ( SELECT MAX( housingUse_id ) AS housingUse_id FROM housingUse GROUP BY house_id ORDER BY housingUse_id ASC ) hs ON hs.housingUse_id = hu.housingUse_id
+        LEFT JOIN use_unit u ON hu.housingUse_id = u.housingUse_id
+        LEFT JOIN build b ON hu.build_id = b.build_id
+        LEFT JOIN yard y ON hu.yard_id = y.yard_id
+        <where>
+            b.build_contract = 1
+            <if test="yardId != null">
+                AND hu.yard_id = #{yardId}
+            </if>
+            <if test="unitIds != null and unitIds.size() > 0">
+                and
+                u.unit_id in
+                <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+        hu.yard_id,
+        floor_Name,
+        hu.build_id
+        ORDER BY
+        hu.build_id ASC
+    </select>
+
+    <!--查询用户权限下的所有关于处置的楼栋-->
+    <select id="buildUnitHandle" resultMap="buildUnit">
+        SELECT DISTINCT
+        hu.yard_id,
+        y.yard_name,
+        hu.build_id,
+        b.build_name,
+        count( hu.house_id ) AS floor_Name,
+        hl.apply_status,
+        hl.handle_way
+        FROM
+        housingUse hu
+        INNER JOIN ( SELECT max( housingUse_id ) AS housingUse_id FROM housingUse GROUP BY house_id ) hs ON
+        hu.housingUse_id = hs.housingUse_id
+        LEFT JOIN use_unit u ON hs.housingUse_id = u.housingUse_id
+        LEFT JOIN build b ON hu.build_id = b.build_id
+        LEFT JOIN yard y ON hu.yard_id = y.yard_id
+        LEFT JOIN ( SELECT max( handle_id ) AS handle_id, build_id FROM handle_module GROUP BY build_id ) hm ON
+        hm.build_id = b.build_id
+        LEFT JOIN handle hl ON hl.handle_id = hm.handle_id
+        <where>
+            <if test="yardId != null">
+                AND hu.yard_id = #{yardId}
+            </if>
+            and
+            (
+            hu.is_use = 0
+            <if test="unitIds != null and unitIds.size() > 0">
+                or
+                u.unit_id in
+                <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+            )
+        </where>
+        group by
+        hu.build_id,
+        hl.apply_status,
+        hl.handle_way
+        ORDER BY
+        hu.build_id ASC
+    </select>
+
+    <!--查询用户权限下的所有楼层-->
+    <select id="floorList" resultMap="buildUnit">
+        SELECT distinct
+        hu.build_id,
+        hu.yard_id,
+        h.floor_name,
+        y.yard_name,
+        b.build_name
+        FROM
+        housingUse hu
+        left join use_unit u on hu.housingUse_id = u.housingUse_id
+        LEFT JOIN house h ON hu.house_id = h.house_id
+        left join yard y on hu.yard_id = y.yard_id
+        left join build b on hu.build_id = b.build_id
+        <where>
+            <if test="buildId != null">
+                and hu.build_id = #{buildId}
+            </if>
+            <if test="unitIds != null and unitIds.size()>0">
+                and u.unit_id in
+                <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        ORDER BY
+        h.floor_name ASC
+    </select>
+
+    <!--查询用户权限下的所有处置楼层-->
+    <select id="floorListHandle" resultMap="buildUnit">
+        SELECT distinct
+        hu.build_id,
+        hu.yard_id,
+        hu.floor_name,
+        y.yard_name,
+        b.build_name,
+        hl.apply_status,
+        hl.handle_way
+        FROM
+        housingUse hu
+        left join use_unit u on hu.housingUse_id = u.housingUse_id
+        left join yard y on hu.yard_id = y.yard_id
+        left join build b on hu.build_id = b.build_id
+        LEFT JOIN (select max(handle_id) as handle_id,build_id from handle_module group by build_id) hm on hm.build_id =
+        b.build_id
+        LEFT JOIN handle hl ON hl.handle_id = hm.handle_id
+        <where>
+
+            <if test="buildId != null">
+                and hu.build_id = #{buildId}
+            </if>
+            and
+            (
+            hu.is_use = 0
+            <if test="unitIds != null and unitIds.size() > 0">
+                or
+                u.unit_id in
+                <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+            )
+        </where>
+        ORDER BY
+        hu.floor_name ASC
+    </select>
+
+    <!--查询用户权限下的所有房间-->
+    <select id="houseList" resultMap="buildUnit">
+        SELECT DISTINCT
+        y.yard_name,
+        b.build_name,
+        hu.yard_id,
+        hu.build_id,
+        hu.floor_name,
+        h.house_id,
+        h.house_number
+        FROM
+        housingUse hu
+        LEFT JOIN use_unit u ON hu.housingUse_id = u.housingUse_id
+        LEFT JOIN house h ON hu.house_id = h.house_id
+        left join yard y on hu.yard_id = y.yard_id
+        left join build b on hu.build_id = b.build_id
+        <where>
+            <if test="floorName != null">
+                and h.floor_name = #{floorName}
+            </if>
+            <if test="buildId != null">
+                and hu.build_id = #{buildId}
+            </if>
+            <if test="unitIds != null and unitIds.size()>0">
+                and u.unit_id in
+                <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        ORDER BY
+        h.house_number ASC
+    </select>
+
+    <!--查询用户权限下的所有房间-->
+    <select id="houseListHandle" resultMap="buildUnit">
+        SELECT DISTINCT
+        y.yard_name,
+        b.build_name,
+        hu.yard_id,
+        hu.build_id,
+        hu.floor_name,
+        h.house_id,
+        h.house_number
+        FROM
+        housingUse hu
+        LEFT JOIN use_unit u ON hu.housingUse_id = u.housingUse_id
+        LEFT JOIN house h ON hu.house_id = h.house_id
+        left join yard y on hu.yard_id = y.yard_id
+        left join build b on hu.build_id = b.build_id
+        <where>
+
+            <if test="floorName != null">
+                and h.floor_name = #{floorName}
+            </if>
+            <if test="buildId != null">
+                and hu.build_id = #{buildId}
+            </if>
+            and
+            (
+            hu.is_use = 0
+            <if test="unitIds != null and unitIds.size() > 0">
+                or
+                u.unit_id in
+                <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+            )
+        </where>
+        ORDER BY
+        h.house_number ASC
+    </select>
+
+    <!--用户权限下的楼栋位置信息查询-->
+    <select id="buildPosition" resultType="com.ryzw.housemanager.dto.BuildPositionDto">
+        SELECT DISTINCT
+        b.build_id,
+        b.build_name,
+        b.build_longitude,
+        b.build_latitude,
+        1 as type
+        FROM
+        housingUse hu
+        left join use_unit u on hu.housingUse_id = u.housingUse_id
+        LEFT JOIN build b ON hu.build_id = b.build_id
+
+        <where>
+            <if test="yardId != null">
+                and hu.yard_id = #{yardId}
+            </if>
+            <if test="unitIds != null and unitIds.size()>0">
+                and u.unit_id in
+                <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+        b.build_id
+        UNION
+        select yard_id,yard_name,yard_longitude,yard_latitude,0
+        from yard
+        <where>
+            <if test="yardId != null">
+                and yard_id = #{yardId}
+            </if>
+        </where>
+    </select>
+
+    <!--查询楼座楼层信息 -->
+    <select id="getBuildFloor" resultMap="buildFloorDto">
+        select b.yard_id,b.build_id,b.build_name,b.underground_floor,b.overground_floor,h.floor_name
+        from build b
+        left join house h
+        on b.build_id = h.build_id
+        <where>
+            <if test="buildId != null">
+                b.build_id = #{buildId}
+            </if>
+        </where>
+        group by b.yard_id,b.build_id,build_name,h.floor_name
+    </select>
+
+    <resultMap id="BuildFloorMap" type="com.ryzw.housemanager.dto.BuildPositionDto">
+        <id column="build_id" property="buildId"/>
+        <result column="build_name" property="buildName"/>
+        <collection property="floorNameDtoList" ofType="com.ryzw.housemanager.dto.FloorNameDto">
+            <id column="floor_name" property="floorName"/>
+        </collection>
+    </resultMap>
+
+    <resultMap id="rightBuildTreeMap" type="com.ryzw.housemanager.dto.HandlePositionDto">
+        <id column="yard_id" property="yardId"/>
+        <result column="yard_name" property="yardName"/>
+        <collection property="buildList" ofType="com.ryzw.housemanager.dto.BuildPositionDto">
+            <id column="build_id" property="buildId"/>
+            <result column="build_name" property="buildName"/>
+            <collection property="floorNameDtoList" ofType="com.ryzw.housemanager.dto.FloorNameDto">
+                <id column="floor_name" property="floorName"/>
+                <collection property="houseNumber" ofType="com.ryzw.housemanager.dto.HouseNumDto">
+                    <id column="house_id" property="houseId"/>
+                    <result column="house_number" property="houseNumber"/>
+                </collection>
+            </collection>
+        </collection>
+    </resultMap>
+
+    <!--产权楼栋树-->
+    <select id="rightBuildTree" resultMap="rightBuildTreeMap">
+        SELECT
+        y.yard_id,
+        b.build_id,
+        y.yard_name,
+        b.build_name,
+        h.house_number,
+        h.floor_name,
+        h.house_id
+        FROM yard y
+        LEFT JOIN build b ON b.yard_id = y.yard_id
+        LEFT JOIN house h ON h.build_id = b.build_id
+        where y.type = 1
+        order by y.yard_id ,b.build_id,h.floor_name
+    </select>
+
+
+</mapper>

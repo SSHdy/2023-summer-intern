@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.RepairProjectMapper">
+    <!--维修项目列表-->
+    <resultMap id="repairProject" type="com.ryzw.housemanager.dto.RepairProjectListDto">
+        <id column="repair_apply_id" property="repairApplyId" javaType="java.lang.Long"></id>
+        <result column="repair_project" property="repairProject"></result>
+        <result column="completion_time" property="completionTime"></result>
+        <result column="repair_apply_date" property="repairApplyDate"></result>
+        <result column="repair_progress" property="repairProgress"></result>
+        <result column="final_sum" property="finalSum"></result>
+        <result column="design_unit" property="designUnit"></result>
+        <result column="repair_type" property="repairType"></result>
+        <collection property="unitName" column="repair_apply_id" ofType="java.lang.String" select="getRepairUnit">
+            <id column="unit_name" property="unitName"></id>
+        </collection>
+    </resultMap>
+    <!--维修项目列表-->
+    <select id="repairProject" resultMap="repairProject">
+        SELECT DISTINCT
+        ra.repair_apply_id,
+        ra.completion_time,
+        ra.repair_project,
+        ra.repair_type,
+        ra.final_sum,
+        ra.design_unit,
+        ra.repair_apply_date,
+        ra.repair_progress
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON ra.repair_apply_id = rm.repair_apply_id
+        LEFT JOIN repair_pm rp ON rp.repair_apply_id = ra.repair_apply_id
+        LEFT JOIN repair_payment rpm ON rpm.repair_apply_id = ra.repair_apply_id and rpm.repair_payment_state != 3
+        <where>
+            IFNULL(ra.repair_type,"") != 1
+            <if test="Pro.yardId != null ">
+                AND rm.yard_id = #{Pro.yardId}
+            </if>
+            <if test="Pro.repairApplyId != null and Pro.repairApplyId != ''">
+                AND ra.repair_apply_id = #{Pro.repairApplyId}
+            </if>
+            <if test="Pro.beginDate != null ">
+                AND ra.repair_apply_date <![CDATA[>=]]> #{Pro.beginDate}
+            </if>
+            <if test="Pro.endDate != null ">
+                AND ra.repair_apply_date <![CDATA[<=]]>#{Pro.endDate}
+            </if>
+            <if test="Pro.userId != null ">
+                AND (rp.repair_pm_userid = #{Pro.userId} AND ra.repair_type = 2)
+                or (ra.repair_applicant_id = #{Pro.userId} and ra.repair_type=0)
+            </if>
+        </where>
+        group by ra.repair_apply_id
+        having (ra.repair_type = 2 and (ra.repair_progress &lt; 100 or count(rpm.repair_payment_id) &gt; 0) or ra.completion_time is NULL) or
+        (ra.repair_type = 0 and ra.completion_time is NULL)
+        order by ra.repair_apply_date desc
+    </select>
+
+    <select id="getRepairUnit" resultType="java.lang.String">
+        select u.unit_name
+        from repairApply ra
+        left join repair_unit ru
+        on ru.repair_apply_id = ra.repair_apply_id
+        left join unit u
+        on ru.unit_id = u.unit_id
+        <where>
+            <if test="_parameter != null">
+                and ra.repair_apply_id = #{repair_apply_id}
+            </if>
+        </where>
+    </select>
+</mapper>

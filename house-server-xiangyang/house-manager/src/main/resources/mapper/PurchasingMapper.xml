@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.PurchasingMapper">
+
+    <!--  查询未录入资产数量  -->
+    <select id="selectNum" resultType="java.lang.Integer">
+        SELECT
+            SUM( pt.number ) AS num
+        FROM
+            purchasing ph
+            LEFT JOIN property pt ON ph.purchasing_id = pt.purchasing_id
+        <where>
+            <if test="id != null">
+                ph.purchasing_id = #{id}
+            </if>
+        </where>
+    </select>
+</mapper>

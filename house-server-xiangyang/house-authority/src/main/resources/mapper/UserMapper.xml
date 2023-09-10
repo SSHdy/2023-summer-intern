@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.houseauthority.mapper.UserMapper">
+    <select id="getUnitIdByUser" resultType="java.lang.Object">
+        select distinct ru.unit_id
+        from user_entity u
+        left join user_role ur
+        on u.user_id = ur.user_id
+        left join role r
+        on r.role_id = ur.role_id
+        left join role_unit ru
+        on ru.role_id = r.role_id
+        where u.is_freeze = 0 and r.is_freeze = 0
+        and ru.unit_id is not null
+        <if test="userid != null">
+            and u.user_id = #{userid}
+        </if>
+    </select>
+
+    <select id="getUserIdByUnit" resultType="java.lang.Long">
+        select DISTINCT ur.user_id
+        from role_unit ru,user_role ur
+        where
+        ru.role_id = ur.role_id
+        <if test="unitId != null">
+            and ru.unit_id =#{unitId}
+        </if>
+    </select>
+
+<!--    查询用户所属的单位id-->
+    <select id="userUnit" resultType="java.lang.Long">
+        SELECT DISTINCT
+            ru.unit_id
+        FROM
+            user_entity ue
+            LEFT JOIN user_role ur ON ue.user_id = ur.user_id
+            LEFT JOIN role_unit ru ON ru.role_id = ur.role_id
+        <where>
+            <if test="userId != null">
+                ur.user_id = #{userId}
+            </if>
+        </where>
+    </select>
+
+    <!--  查询用户详情  -->
+    <select id="userDetail" resultType="com.ryzw.houseauthority.dto.UserDetailDto">
+        SELECT DISTINCT
+            u.user_id,
+            u.name,
+            u.username,
+            u.sex,
+            u.is_freeze,
+            u.phone_num as telephone,
+            r.role_banner
+        FROM
+            user_entity AS u
+            LEFT JOIN user_role AS ur ON u.user_id = ur.user_id
+            LEFT JOIN role AS r ON r.role_id = ur.role_id
+        <where>
+            <if test="userName != null and userName != '' " >
+               and u.username = #{userName}
+            </if>
+        </where>
+    </select>
+
+</mapper>

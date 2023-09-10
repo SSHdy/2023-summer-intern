@@ -1,0 +1,718 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.RepairApplyMapper">
+
+    <!--查询维修单位集合-->
+    <select id="selectUnit" resultType="java.lang.String">
+        SELECT
+        u.unit_name
+        FROM
+        repairApply ra
+        LEFT JOIN repair_unit ru ON ra.repair_apply_id = ru.repair_apply_id
+        LEFT JOIN unit u ON u.unit_id = ru.unit_id
+        <where>
+            <if test="_parameter != null ">
+                and ra.repair_apply_id = #{repairApplyId}
+            </if>
+        </where>
+    </select>
+
+    <!--查询维修内容集合-->
+    <select id="selectTargetList" resultType="java.lang.String">
+        SELECT
+        rm.repair_module_target
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON ra.repair_apply_id = rm.repair_apply_id
+        <where>
+            <if test="_parameter != null ">
+                and ra.repair_apply_id = #{repairApplyId}
+            </if>
+        </where>
+    </select>
+
+    <!--维修申请列表-->
+    <select id="selectAllRepairApply" resultType="com.ryzw.housemanager.dto.RepairApplyDto">
+        SELECT
+        ra.repair_apply_id,
+        ra.repair_apply_no,
+        ra.repair_applicant,
+        ra.repair_apply_date,
+        CASE  step
+        WHEN 19 THEN
+        1
+        ELSE
+        ra.apply_status
+        END  apply_status,
+        ra.repair_type,
+        ra.repair_project,
+        ra.repair_progress,
+        ra.process_instance_id,
+        sum(rm.repair_module_area) as repairModuleArea
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON ra.repair_apply_id = rm.repair_apply_id
+        <where>
+            <if test="RepairApply.userId!=null and RepairApply.userId != ''">
+                and repair_applicant_id =#{RepairApply.userId}
+            </if>
+            <if test="RepairApply.startApplicationTime !=null">
+                and repair_apply_date >= #{RepairApply.startApplicationTime}
+            </if>
+            <if test="RepairApply.endApplicationTime !=null">
+                and repair_apply_date &lt;= #{RepairApply.endApplicationTime}
+            </if>
+            <if test="RepairApply.applyStatus !=null">
+                and apply_status = #{RepairApply.applyStatus}
+            </if>
+            <if test="RepairApply.repairApplyNo!= null and RepairApply.repairApplyNo != ''">
+                and repair_apply_no like concat('%',#{RepairApply.repairApplyNo},'%')
+            </if>
+        </where>
+        GROUP BY
+        ra.repair_apply_id
+        order by ra.repair_apply_id desc
+    </select>
+
+    <resultMap id="leaderReviewListMap" type="com.ryzw.housemanager.dto.RepairApplyDto">
+        <id column="repair_apply_id" property="repairApplyId"/>
+        <result column="repair_apply_no" property="repairApplyNo"/>
+        <result column="apply_status" property="applyStatus"/>
+        <result column="repair_type" property="repairType"/>
+        <collection property="repairTargetList" ofType="java.lang.String">
+            <id column="repair_module_target" property="repairTargetList"/>
+        </collection>
+    </resultMap>
+
+    <!--维修查看列表-->
+    <select id="leaderReviewList" resultType="com.ryzw.housemanager.dto.RepairApplyDto">
+        SELECT
+        distinct
+        ra.repair_apply_id,
+        ra.repair_apply_no,
+        CASE  step
+        WHEN 19 THEN
+        1
+        ELSE
+        ra.apply_status
+        END  apply_status,
+        ra.repair_type,
+        ra.repair_applicant,
+        ra.repair_apply_date
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON ra.repair_apply_id = rm.repair_apply_id
+        <where>
+            <if test="RepairApply.startApplicationTime !=null">
+                and repair_apply_date >= #{RepairApply.startApplicationTime}
+            </if>
+            <if test="RepairApply.endApplicationTime !=null">
+                and repair_apply_date &lt;= #{RepairApply.endApplicationTime}
+            </if>
+            <if test="RepairApply.applyStatus !=null">
+                and apply_status = #{RepairApply.applyStatus}
+            </if>
+            <if test="RepairApply.repairApplyNo!= null and RepairApply.repairApplyNo != ''">
+                and repair_apply_no like concat('%',#{RepairApply.repairApplyNo},'%')
+            </if>
+            <if test="RepairApply.repairTarget!= null and RepairApply.repairTarget != ''">
+                and rm.repair_module_target like concat('%',#{RepairApply.repairTarget},'%')
+            </if>
+        </where>
+        GROUP BY
+        ra.repair_apply_id,rm.repair_module_target,rm.repair_module_id,rm.position_str
+        order by ra.repair_apply_id desc
+    </select>
+
+
+    <resultMap id="repairApplyDetailMap" type="com.ryzw.housemanager.dto.RepairApplyDetailDto">
+        <id column="repair_apply_id" property="repairApplyId"/>
+        <result column="repair_apply_date" property="repairApplyDate"/>
+        <result column="task_id" property="taskId"/>
+        <result column="step" property="step"/>
+        <result column="apply_status" property="applyStatus"/>
+        <result column="repair_applicant" property="repairApplicant"/>
+        <collection property="RepairModuleDetailList" ofType="com.ryzw.housemanager.dto.RepairModuleDetailDto">
+            <id column="repair_module_id" property="repairModuleId"/>
+            <result column="repair_module_target" property="repairModuleTarget"/>
+            <result column="yard_name" property="yardName"/>
+            <result column="yard_id" property="yardId"/>
+            <result column="build_id" property="buildId"/>
+            <result column="house_id" property="houseId"/>
+            <result column="build_name" property="buildName"/>
+            <result column="floor_name" property="floorName"/>
+            <result column="repair_part_id" property="repairPartId"/>
+            <result column="house_number" property="houseNumber"/>
+            <result column="repair_module_area" property="repairModuleArea"/>
+            <result column="repair_part_name" property="repairPartName"/>
+            <result column="repair_part_quality" property="repairPartQuality"/>
+            <result column="position_str" property="positionStr"/>
+            <result column="repair_module_position" property="repairModulePosition"/>
+            <collection property="repairImgList" ofType="com.ryzw.housemanager.entity.RepairImg">
+                <id column="repairImg_id" property="repairImgId"/>
+                <result column="physical_address" property="physicalAddress"/>
+                <result column="virtual_address" property="virtualAddress"/>
+            </collection>
+        </collection>
+        <collection property="unitNameList" ofType="java.lang.String">
+            <id column="unit_name" property="unitNameList"/>
+        </collection>
+    </resultMap>
+
+
+    <!--查询维修申请详情-->
+    <select id="selectRepairApplyDetail" resultMap="repairApplyDetailMap">
+        SELECT
+        rm.repair_apply_id,
+        rm.repair_module_target,
+        rm.repair_module_area,
+        rm.repair_module_id,
+        rm.repair_part_id,
+        rm.repair_module_position,
+        ra.task_id,
+        ra.step,
+        ra.apply_status,
+        ra.repair_applicant,
+        y.yard_name,
+        y.yard_id,
+        b.build_name,
+        b.build_id,
+        h.house_number,
+        rm.floor_name,
+        rm.position_str,
+        h.house_id,
+        rp.repair_part_name,
+        rp.repair_part_quality,
+        ra.repair_apply_date,
+        ri.physical_address,
+        ri.virtual_address,
+        ri.repairImg_id,
+        ru.unit_id,
+        u.unit_name
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON ra.repair_apply_id = rm.repair_apply_id
+        LEFT JOIN yard y ON y.yard_id = rm.yard_id
+        LEFT JOIN build b ON b.build_id = rm.build_id
+        LEFT JOIN house_history h ON h.house_id = rm.house_id
+        LEFT JOIN repairImg ri ON ri.repair_module_id = rm.repair_module_id
+        LEFT JOIN repair_unit ru ON ru.repair_apply_id = ra.repair_apply_id
+        LEFT JOIN unit u ON u.unit_id = ru.unit_id
+        LEFT JOIN repairParts rp ON rp.repair_parts_id = rm.repair_part_id
+        <where>
+            <if test="repairApplyId != null and repairApplyId != ''">
+                and ra.repair_apply_id = #{repairApplyId}
+            </if>
+            and rm.is_repair != 1
+        </where>
+    </select>
+
+    <resultMap id="repairApprovalDetailMap" type="com.ryzw.housemanager.dto.RepairApprovalDetailDto">
+        <id column="repair_apply_id" property="repairApplyId"/>
+        <result column="repair_apply_date" property="repairApplyDate"/>
+        <result column="repair_applicant" property="repairApplicant"/>
+        <result column="responsible_person" property="responsiblePerson"/>
+        <result column="repair_unit_name" property="repairUnitName"/>
+        <result column="unit_area_price" property="unitAreaPrice"/>
+        <result column="budget_estimate" property="budgetEstimate"/>
+        <result column="total_budget_price" property="totalBudgetPrice"/>
+        <result column="repair_project" property="repairProject"/>
+        <result column="totalArea" property="totalArea"/>
+        <collection property="repairModuleDetailDtoList" ofType="com.ryzw.housemanager.dto.RepairModuleDetailDto">
+            <id column="repair_module_id" property="repairModuleId"/>
+            <result column="repair_module_position" property="repairModulePosition"/>
+            <result column="position_str" property="positionStr"/>
+            <result column="yard_name" property="yardName"/>
+            <result column="build_name" property="buildName"/>
+            <result column="floor_name" property="floorName"/>
+            <result column="repair_part_id" property="repairPartId"/>
+            <result column="house_number" property="houseNumber"/>
+            <result column="repair_part_name" property="repairPartName"/>
+        </collection>
+        <collection property="unitNameList" ofType="java.lang.String">
+            <id column="unit_name" property="unitNameList"/>
+        </collection>
+    </resultMap>
+
+    <!--维修信息详情集合-->
+    <select id="selectRepairApprovalDetail" resultMap="repairApprovalDetailMap">
+        SELECT
+        ra.repair_apply_id,
+        rm.repair_module_id,
+        rm.repair_part_id,
+        rm.position_str,
+        rm.repair_module_position,
+        ra.repair_applicant,
+        ra.repair_apply_date,
+        ra.unit_area_price,
+        ra.budget_estimate,
+        ra.total_budget_price,
+        ra.repair_project,
+        ra.responsible_person,
+        ra.repair_unit_name,
+        y.yard_name,
+        rp.repair_part_name,
+        b.build_name,
+        u.unit_name,
+        h.house_number,
+        h.floor_name,
+        sum(rm.repair_module_area) as totalArea
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON ra.repair_apply_id = rm.repair_apply_id and rm.is_repair != 1
+        LEFT JOIN yard y ON y.yard_id = rm.yard_id
+        LEFT JOIN build b ON b.build_id = rm.build_id
+        LEFT JOIN house_history h ON h.house_id = rm.house_id
+        LEFT JOIN repairParts rp ON rp.repair_parts_id = rm.repair_part_id
+        LEFT JOIN repair_unit ru ON ru.repair_apply_id = ra.repair_apply_id
+        LEFT JOIN unit u ON u.unit_id = ru.unit_id
+        <where>
+            <if test="repairApplyId != null and repairApplyId != ''">
+                and ra.repair_apply_id = #{repairApplyId}
+            </if>
+        </where>
+        group by ra.repair_apply_id, rm.repair_module_id,u.unit_name
+    </select>
+
+    <!--维修信息详情-->
+    <select id="selectRepairMessageDetail" resultType="com.ryzw.housemanager.dto.RepairMessageDetailDto">
+        SELECT
+        y.yard_name,
+        b.build_name,
+        h.house_number,
+        h.floor_name,
+        rp.repair_part_name,
+        rp.repair_part_quality,
+        rm.repair_module_target,
+        rm.repair_apply_id,
+        rm.position_str,
+        rm.repair_quality,
+        rm.repair_module_position,
+        rm.repair_module_area
+        FROM
+        repair_module rm
+        LEFT JOIN yard y ON y.yard_id = rm.yard_id
+        LEFT JOIN build b ON b.build_id = rm.build_id
+        LEFT JOIN house_history h ON h.house_id = rm.house_id
+        LEFT JOIN repairParts rp ON rp.repair_parts_id = rm.repair_part_id
+        <where>
+            <if test="repairModuleId != null and repairModuleId != ''">
+                and rm.repair_module_id = #{repairModuleId}
+            </if>
+            and rm.is_repair != 1
+        </where>
+    </select>
+
+    <resultMap id="RepairRecordMap" type="com.ryzw.housemanager.dto.RepairRecordDetailDto">
+        <id column="repair_module_id" property="repairModuleId"/>
+        <result column="completion_time" property="completionTime"/>
+        <result column="contact_phone" property="contactPhone"/>
+        <result column="responsible_person" property="responsiblePerson"/>
+        <result column="repair_module_id" property="repairModuleId"/>
+        <result column="yard_name" property="yardName"/>
+        <result column="repair_part_name" property="repairPartName"/>
+        <result column="repair_module_position" property="repairModulePosition"/>
+        <result column="build_name" property="buildName"/>
+        <result column="house_number" property="houseNumber"/>
+        <result column="floor_name" property="floorName"/>
+        <result column="position_str" property="positionStr"/>
+        <result column="repair_part_quality" property="repairPartQuality"/>
+        <collection property="repairUnitNameList" ofType="java.lang.String">
+            <id column="unit_name" property="repairUnitNameList"/>
+        </collection>
+    </resultMap>
+
+    <!--查询相关维修记录-->
+    <select id="selectRepairRecord" resultMap="RepairRecordMap">
+        SELECT
+        ra.repair_apply_id,
+        ra.completion_time,
+        ra.contact_phone,
+        ra.responsible_person,
+        ra.repair_unit_name,
+        rm.repair_module_id,
+        rm.position_str,
+        y.yard_name,
+        rp.repair_part_name,
+        rm.repair_module_position,
+        b.build_name,
+        u.unit_name,
+        h.house_number,
+        h.floor_name,
+        rp.repair_part_quality
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON ra.repair_apply_id = rm.repair_apply_id
+        LEFT JOIN yard y ON y.yard_id = rm.yard_id
+        LEFT JOIN build b ON b.build_id = rm.build_id
+        LEFT JOIN house_history h ON h.house_id = rm.house_id
+        LEFT JOIN repairParts rp ON rp.repair_parts_id = rm.repair_part_id
+        LEFT JOIN repair_unit ru ON ru.repair_apply_id = ra.repair_apply_id
+        LEFT JOIN unit u ON u.unit_id = ru.unit_id
+        <where>
+            <if test="yardId !=null">
+                and rm.yard_id = #{yardId}
+            </if>
+            <if test="buildId !=null">
+                and rm.build_id = #{buildId}
+            </if>
+            <if test="houseId !=null and houseId !=''">
+                and rm.house_id = #{houseId}
+            </if>
+            <if test="floorName !=null">
+                and h.floor_name = #{floorName}
+            </if>
+            <if test="repairPartId !=null">
+                and rm.repair_part_id = #{repairPartId}
+            </if>
+            and rm.is_repair = 2
+        </where>
+        order by rm.repair_module_id desc
+        LIMIT 4
+    </select>
+
+    <!--查询某个维修申请对应的维修模块总面积-->
+    <select id="selectTotalArea" resultType="java.lang.Double">
+        SELECT
+        sum(rm.repair_module_area) as totalArea
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON rm.repair_apply_id = ra.repair_apply_id
+        <where>
+            <if test="repairApplyId != null and repairApplyId != ''">
+                and ra.repair_apply_id = #{repairApplyId}
+            </if>
+            and rm.is_repair = 0
+        </where>
+    </select>
+
+
+    <resultMap id="repairBuildRecordMap" type="com.ryzw.housemanager.dto.RepairBuildRecordDto">
+        <id column="build_id" property="buildId"/>
+        <collection property="repairModuleDetailDtoList" ofType="com.ryzw.housemanager.dto.RepairModuleDetailDto">
+            <id column="repair_module_id" property="repairModuleId"/>
+            <result column="yard_name" property="yardName"/>
+            <result column="build_name" property="buildName"/>
+            <result column="floor_name" property="floorName"/>
+            <result column="house_number" property="houseNumber"/>
+            <result column="repair_part_name" property="repairPartName"/>
+            <result column="repair_module_target" property="repairModuleTarget"/>
+            <result column="repair_module_area" property="repairModuleArea"/>
+            <result column="position_str" property="positionStr"/>
+        </collection>
+    </resultMap>
+
+    <!--查询某楼栋相关的维修模块记录-->
+    <select id="selectRepairBuildRecord" resultMap="repairBuildRecordMap">
+        SELECT
+        rm.repair_module_id,
+        rm.repair_module_area,
+        rm.repair_module_target,
+        rm.position_str,
+        y.yard_name,
+        y.yard_id,
+        b.build_name,
+        b.build_id,
+        h.house_number,
+        h.floor_name,
+        h.house_id,
+        rp.repair_part_name
+        FROM
+        repair_module rm
+        LEFT JOIN build b ON rm.build_id = b.build_id
+        LEFT JOIN yard y ON y.yard_id = rm.yard_id
+        LEFT JOIN house_history h ON h.house_id = rm.house_id
+        LEFT JOIN repairParts rp ON rp.repair_parts_id = rm.repair_part_id
+        <where>
+            <if test="buildId != null and buildId != ''">
+                and b.build_id = #{buildId}
+            </if>
+            and rm.is_repair = 2
+        </where>
+        ORDER BY
+        rm.repair_module_id DESC
+        LIMIT 5
+    </select>
+
+
+    <select id="selectRepairApproval" resultType="com.ryzw.housemanager.dto.RepairApprovalDto">
+        SELECT
+        r.repair_apply_id,
+        r.repair_apply_no,
+        r.task_id,
+        r.repair_project,
+        r.repair_applicant,
+        r.repair_apply_date,
+        r.process_instance_id,
+        r.step,
+        sum(rm.repair_module_area) repair_module_area
+        FROM
+        repairApply AS r
+        left join repair_module rm
+        on r.repair_apply_id = rm.repair_apply_id
+        <where>
+            <if test="RepairApply.repairIds != null and RepairApply.repairIds.size() >0">
+                AND r.repair_apply_id IN
+                <foreach item="item" collection="RepairApply.repairIds" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="RepairApply.startApplicationTime !=null">
+                and r.repair_apply_date >= #{RepairApply.startApplicationTime}
+            </if>
+            <if test="RepairApply.endApplicationTime !=null">
+                and r.repair_apply_date &lt;= #{RepairApply.endApplicationTime}
+            </if>
+            <if test="RepairApply.repairApplyNo!= null and RepairApply.repairApplyNo != ''">
+                and r.repair_apply_no like concat('%',#{RepairApply.repairApplyNo},'%')
+            </if>
+            <if test="RepairApply.repairProject!= null and RepairApply.repairProject != ''">
+                and r.repair_project like concat('%',#{RepairApply.repairProject},'%')
+            </if>
+        </where>
+        group by r.repair_apply_id
+        order by r.repair_apply_id desc
+    </select>
+
+    <resultMap id="projectDetail" type="com.ryzw.housemanager.dto.RepairProjectDto">
+        <id column="repair_project" property="repairProject"/>
+        <result column="final_sum" property="finalSum"/>
+        <result column="repair_module_area" property="repairModuleArea"/>
+        <result column="repair_applicant" property="repairApplicant"/>
+        <result column="repair_apply_date" property="repairApplyDate"/>
+        <result column="design_unit" property="designUnit"/>
+        <result column="audit_unit" property="auditUnit"/>
+        <result column="accreditation_unit" property="accreditationUnit"/>
+        <result column="planning_permit" property="planningPermit"/>
+        <collection property="unitName" ofType="java.lang.String">
+            <id column="unit_name" property="unitName"/>
+        </collection>
+    </resultMap>
+
+    <select id="projectDetail" resultMap="projectDetail">
+        SELECT DISTINCT
+        ra.repair_project,
+        ra.final_sum,
+        rm.repair_module_area,
+        ra.repair_applicant,
+        ra.repair_apply_date,
+        u.unit_name,
+        ra.design_unit,
+        ra.audit_unit,
+        ra.accreditation_unit,
+        ra.planning_permit
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON rm.repair_apply_id = ra.repair_apply_id
+        LEFT JOIN repair_unit ru ON ru.repair_apply_id = ra.repair_apply_id
+        LEFT JOIN unit u ON u.unit_id = ru.unit_id
+        <where>
+            <if test="id != null ">
+                and ra.repair_apply_id = #{id}
+            </if>
+        </where>
+
+    </select>
+
+
+    <select id="typeReport" resultType="com.ryzw.housemanager.dto.RepairReportDto">
+        SELECT
+        ra.repair_type,
+        SUM(ra.final_sum) as totalMoney,
+        COUNT(rm.repair_apply_id) AS num,
+        SUM(rm.repair_module_area) as totalArea
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON rm.repair_apply_id = ra.repair_apply_id
+        <where>
+            <if test="type.applyStatus != null ">
+                and ra.apply_status = #{type.applyStatus}
+            </if>
+        </where>
+        GROUP BY
+        ra.repair_type
+
+    </select>
+
+    <!--查询某个用户所有审批记录-->
+    <select id="selectApprovalRecord" resultType="com.ryzw.housemanager.dto.RepairApplyDto">
+        SELECT
+        repair_apply_id,
+        repair_applicant_id,
+        repair_apply_no,
+        repair_apply_date,
+        repair_applicant
+        FROM
+        repairApply
+        <where>
+            <if test="userId != null ">
+                and repair_applicant_id = #{userId}
+            </if>
+            <if test="repairApplyIdList != null and repairApplyIdList.size() >0">
+                and
+                repair_apply_id in
+                <foreach collection="repairApplyIdList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="selectRepairCount" resultType="com.ryzw.housemanager.entity.RepairWorkStatistics">
+        SELECT
+        ( SELECT count(0) FROM repairApply
+        <where>
+            <if test="WorkStatistics.step!=null">
+                AND step = #{WorkStatistics.step}
+            </if>
+            AND apply_status = 1
+            <if test="WorkStatistics.applyDateMonth!=null">
+                AND date_format(repair_apply_date,'%Y-%m')= #{WorkStatistics.applyDateMonth}
+            </if>
+            <if test="WorkStatistics.applyDateYear!=null">
+                AND date_format(repair_apply_date,'%Y')= #{WorkStatistics.applyDateYear}
+            </if>
+            <if test="WorkStatistics.unitIdList!=null and WorkStatistics.unitIdList.size()>0">
+                AND unit_id in
+                <foreach collection="WorkStatistics.unitIdList" item="item" index="index" separator="," open="("
+                         close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        ) auditCount,
+        sum( rm.repair_module_area ) repairModuleArea,sum(rp.repair_payment_money) repairPaymentMoney
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON ra.repair_apply_id = rm.repair_apply_id
+        LEFT JOIN repair_payment rp ON ra.repair_apply_id = rp.repair_apply_id
+        <where>
+            <if test="WorkStatistics.step!=null">
+                AND ra.step = #{WorkStatistics.step}
+            </if>
+            <if test="WorkStatistics.applyDateMonth!=null">
+                AND date_format(ra.repair_apply_date,'%Y-%m')= #{WorkStatistics.applyDateMonth}
+            </if>
+            <if test="WorkStatistics.applyDateYear!=null">
+                AND date_format(ra.repair_apply_date,'%Y')= #{WorkStatistics.applyDateYear}
+            </if>
+            <if test="WorkStatistics.unitIdList!=null and WorkStatistics.unitIdList.size()>0">
+                AND ra.unit_id in
+                <foreach collection="WorkStatistics.unitIdList" item="item" index="index" separator="," open="("
+                         close=")">
+                    #{item}
+                </foreach>
+            </if>
+            AND ra.apply_status = 1
+        </where>
+    </select>
+
+    <!--查询维修工作统计日期范围-->
+    <select id="statisticsDateRange" resultType="com.ryzw.housemanager.dto.DateRangeDto">
+        SELECT
+        date_format(MAX(repair_apply_date),'%Y') as maxYear,
+        date_format(MIN(repair_apply_date),'%Y') as minYear,
+        date_format(MAX(repair_apply_date),'%Y-%m') as maxMonth,
+        date_format(MIN(repair_apply_date),'%Y-%m') as minMonth
+        FROM
+        repairApply
+        <where>
+            <if test="unitIds !=null and unitIds.size()>0">
+                and unit_id IN
+                <foreach collection="unitIds" item="item" index="index" separator="," open="("
+                         close=")">
+                    #{item}
+                </foreach>
+            </if>
+            and apply_status = 1
+        </where>
+    </select>
+
+    <!--查询某栋楼关联的维修申请-->
+    <select id="buildRepairApplyList" resultType="com.ryzw.housemanager.dto.BuildRepairApplyDto">
+        SELECT DISTINCT
+        ra.repair_apply_id,
+        ra.repair_applicant,
+        ra.repair_apply_date,
+        y.yard_name,
+        y.yard_id,
+        b.build_name,
+        b.build_id
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON rm.repair_apply_id = ra.repair_apply_id
+        LEFT JOIN build b ON rm.build_id = b.build_id
+        LEFT JOIN yard y ON y.yard_id = rm.yard_id
+        <where>
+            <if test="buildRepairVo.buildId!=null">
+                and rm.build_id = #{buildRepairVo.buildId}
+            </if>
+            <if test="buildRepairVo.startTime !=null">
+                and ra.repair_apply_date >= #{buildRepairVo.startTime}
+            </if>
+            <if test="buildRepairVo.endTime !=null">
+                and ra.repair_apply_date &lt;= #{buildRepairVo.endTime}
+            </if>
+            and ra.apply_status = 1
+        </where>
+    </select>
+
+    <!--查询维修档案列表-->
+    <select id="repairFilesList" resultType="com.ryzw.housemanager.dto.RepairFilesDto">
+        SELECT DISTINCT
+        y.yard_name,
+        y.yard_id,
+        b.build_name,
+        b.build_id,
+        t.repairCount,
+        f.repairArea
+        FROM
+        build b
+        LEFT JOIN yard y ON b.yard_id = y.yard_id
+        LEFT JOIN (
+        SELECT
+        rm.build_id,
+        SUM(rm.repair_module_area) AS repairArea
+        FROM
+        repair_module rm
+        LEFT JOIN repairApply ra ON rm.repair_apply_id = ra.repair_apply_id
+        WHERE
+        ra.apply_status = 1
+        GROUP BY
+        rm.build_id
+        ) f ON f.build_id = b.build_id
+        LEFT JOIN (
+        SELECT
+        rm.build_id,
+        COUNT(ra.repair_apply_id) as repairCount
+        FROM
+        repair_module rm
+        LEFT JOIN repairApply ra ON rm.repair_apply_id = ra.repair_apply_id
+        WHERE
+        ra.apply_status = 1
+        GROUP BY
+        rm.build_id
+        ) t on t.build_id = b.build_id
+        <where>
+            <if test="buildAndYardVo.yardIdList !=null and buildAndYardVo.yardIdList.size() >0">
+                and y.yard_id in
+                <foreach collection="buildAndYardVo.yardIdList" item="item" open="(" close=")" separator=",">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="buildAndYardVo.buildIdList !=null and buildAndYardVo.buildIdList.size() >0">
+                and b.build_id in
+                <foreach collection="buildAndYardVo.buildIdList" item="item" open="(" close=")" separator=",">
+                    #{item}
+                </foreach>
+            </if>
+            and y.type = 1 and b.build_id is not null
+        </where>
+        group by
+        y.yard_id,
+        b.build_id,
+        f.repairArea,
+        t.repairCount
+    </select>
+
+</mapper>

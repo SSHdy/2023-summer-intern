@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.RepairProjectPartsMapper">
+
+    <resultMap id="repairLogDetailMap" type="com.ryzw.housemanager.dto.RepairManageDto">
+        <id column="repair_apply_id" property="repairApplyId"/>
+        <collection property="repairLogDtoList" ofType="com.ryzw.housemanager.dto.RepairLogDto">
+            <id column="repair_project_id" property="repairProjectId"/>
+            <result column="repair_project_userid" property="repairProjectUserid"/>
+            <result column="repair_project_date" property="repairProjectDate"/>
+            <result column="repair_project_weather" property="repairProjectWeather"/>
+            <result column="repair_project_num" property="repairProjectNum"/>
+            <result column="repair_project_username" property="repairProjectUsername"/>
+            <result column="repair_project_problems" property="repairProjectProblems"/>
+            <result column="repair_project_security" property="repairProjectSecurity"/>
+            <result column="repair_project_construction" property="repairProjectConstruction"/>
+            <result column="repair_project_progress" property="repairProjectProgress"/>
+            <collection property="partsIdAndImgVoList" ofType="com.ryzw.housemanager.vo.PartsIdAndImgVo">
+                <id column="repair_project_parts_id" property="repairProjectPartsId"/>
+                <result column="repair_parts_id" property="repairPartsId"/>
+                <result column="repair_part_name" property="repairPartName"/>
+                <result column="repair_module_id" property="repairModuleId"/>
+                <collection property="repairPmImgList" ofType="com.ryzw.housemanager.entity.RepairPmImg">
+                    <id column="repair_pm_img_id" property="repairPmImgId"/>
+                    <result column="repair_pm_img_physics_url" property="repairPmImgPhysicsUrl"/>
+                    <result column="repair_pm_img_virtual_url" property="repairPmImgVirtualUrl"/>
+                    <result column="repair_project_parts_id" property="repairProjectPartsId"/>
+                </collection>
+            </collection>
+        </collection>
+        <collection property="repairItemsList" ofType="com.ryzw.housemanager.entity.RepairItems">
+            <id column="repair_items_id" property="repairItemsId"/>
+            <result column="repair_items_reduce_explain" property="repairItemsReduceExplain"/>
+            <result column="repair_items_add_explain" property="repairItemsAddExplain"/>
+            <result column="repair_items_physical_address" property="repairItemsPhysicalAddress"/>
+        </collection>
+    </resultMap>
+
+    <!--查询施工日志信息-->
+    <select id="selectRepairLogDetail" resultMap="repairLogDetailMap">
+        SELECT
+        ra.repair_applicant,
+        rm.repair_module_id,
+        ra.repair_apply_id,
+        ra.repair_apply_date,
+        rps.repair_part_name,
+        rps.repair_parts_id,
+        rpp.repair_module_id,
+        rp.*, rpi.*,
+        ri.repair_items_physical_address,
+        ri.repair_items_add_explain,
+        ri.repair_items_reduce_explain,
+        ri.repair_items_id
+        FROM
+        repair_project_parts rpp
+        LEFT JOIN repair_module rm ON rpp.repair_module_id = rm.repair_module_id
+        LEFT JOIN repairApply ra ON ra.repair_apply_id = rm.repair_apply_id
+        LEFT JOIN repairParts rps ON rps.repair_parts_id = rm.repair_part_id
+        LEFT JOIN repair_project rp ON rp.repair_project_id = rpp.repair_project_id
+        LEFT JOIN repair_pm_img rpi ON rpi.repair_project_parts_id = rpp.repair_project_parts_id
+        LEFT JOIN repair_items ri ON ri.repair_apply_id = ra.repair_apply_id
+        <where>
+            <if test="repairApplyId !=null">
+                and ra.repair_apply_id = #{repairApplyId}
+            </if>
+        </where>
+        order by rp.repair_project_id asc
+    </select>
+
+
+</mapper>

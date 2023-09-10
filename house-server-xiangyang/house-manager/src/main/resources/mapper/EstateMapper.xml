@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.EstateMapper">
+
+    <!--查询物业信息列表-->
+    <select id="selectEstateList" resultType="com.ryzw.housemanager.entity.Estate">
+        SELECT
+        estate_id,
+        estate_name,
+        estate_type,
+        manager,
+        estate_phone
+        FROM
+        estate
+        <where>
+            <if test="EstateVo.estateType!=null">
+                and estate_type =#{EstateVo.estateType}
+            </if>
+            <if test="EstateVo.manager !=null and EstateVo.manager !=''">
+                and manager like concat('%',#{EstateVo.manager},'%')
+            </if>
+        </where>
+    </select>
+
+    <select id="selectCountEstate" resultType="java.lang.Integer">
+        SELECT
+        count(yard_estate_id)
+        FROM
+        estate e
+        LEFT JOIN yard_estate ye ON e.estate_id = ye.estate_id
+        <where>
+            <if test="estateId!=null">
+                and e.estate_id =#{estateId}
+            </if>
+        </where>
+    </select>
+
+</mapper>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.houseauthority.mapper.RoleMapper">
+    <select id="getRoleByUserId" resultType="com.ryzw.houseauthority.entity.Role">
+        SELECT
+        r.*
+        FROM
+        role r
+        LEFT JOIN user_role ur ON r.role_id = ur.role_id
+        <where>
+            <if test=" userId != null ">
+                and ur.user_id = #{userId}
+            </if>
+        </where>
+    </select>
+
+    <!--查询角色信息详情-->
+    <resultMap id="roleDetail" type="com.ryzw.houseauthority.dto.RoleDetailDto">
+        <id column="role_id" property="roleId"></id>
+        <result column="role_name" property="roleName"></result>
+        <result column="is_freeze" property="isFreeze"></result>
+        <result column="is_subscibe" property="isSubscibe"></result>
+        <result column="role_value" property="roleValue"></result>
+        <result column="role_banner" property="roleBanner"></result>
+        <collection property="menuDetail" ofType="com.ryzw.houseauthority.dto.MenuDetailDto">
+            <id column="menu_id" property="menuId"></id>
+            <result column="menu_title" property="menuTitle"></result>
+        </collection>
+        <collection property="unitId" ofType="java.lang.Long">
+            <id column="unit_id"></id>
+        </collection>
+    </resultMap>
+
+
+    <sql id="roleDetailSql">
+         SELECT
+        r.*, m.menu_id,
+        m.menu_title,
+        ru.unit_id
+        FROM
+        role r
+        LEFT JOIN role_menu rm ON r.role_id = rm.role_id
+        LEFT JOIN menu m ON m.menu_id = rm.menu_id
+        LEFT JOIN role_unit ru ON r.role_id = ru.role_id
+    </sql>
+
+    <!--查询角色信息详情-->
+    <select id="roleDetail" resultMap="roleDetail">
+       <include refid="roleDetailSql"></include>
+        <where>
+            <if test=" roleId != null ">
+                and r.role_id = #{roleId}
+            </if>
+        </where>
+    </select>
+
+
+    <!--查询角色信息详情-->
+    <select id="roleUpdate" resultMap="roleDetail">
+        SELECT
+        r.*, m.menu_id,
+        m.menu_title,
+        ru.unit_id
+        FROM
+        role r
+        LEFT JOIN role_menu rm ON r.role_id = rm.role_id
+        LEFT JOIN menu m ON m.menu_id = rm.menu_id and  m.menu_pid != 0
+        LEFT JOIN role_unit ru ON r.role_id = ru.role_id
+        <where>
+            <if test=" roleId != null ">
+                and r.role_id = #{roleId}
+            </if>
+        </where>
+    </select>
+</mapper>

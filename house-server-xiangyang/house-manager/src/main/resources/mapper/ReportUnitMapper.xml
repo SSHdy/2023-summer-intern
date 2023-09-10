@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.ReportUnitMapper">
+
+    <!--查询单位上报列表-->
+    <select id="reportUnitList" resultType="com.ryzw.housemanager.dto.ReportUnitDto">
+        SELECT distinct
+        ru.report_id,
+        ru.report_unit_name,
+        re.report_enclosure_id,
+        re.report_enclosure_physics_url,
+        (case when re.report_enclosure_id is not null then 1 else 0 end) as isReport
+        FROM
+        report_unit ru
+        LEFT JOIN report_enclosure re ON re.report_id = ru.report_id and re.report_year = #{reportUnitVo.reportYear}
+        <where>
+            <if test="reportUnitVo.unitName != null and reportUnitVo.unitName != ''">
+                and ru.report_unit_name like concat('%',#{reportUnitVo.unitName},'%')
+            </if>
+            <choose>
+                <when test="reportUnitVo.state == 1">
+                    and re.report_enclosure_id IS NOT NULL
+                </when>
+                <when test="reportUnitVo.state == 0">
+                    and re.report_enclosure_id IS NULL
+                </when>
+                <otherwise>
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+
+    <!--查询所有单位集合-->
+    <select id="unitList" resultType="com.ryzw.housemanager.dto.ReportUnitDto">
+        SELECT distinct
+        ru.report_id,
+        ru.report_unit_name,
+        re.report_enclosure_id,
+        re.report_enclosure_physics_url,
+        (case when re.report_enclosure_id is not null then 1 else 0 end) as isReport
+        FROM
+        report_unit ru
+        LEFT JOIN report_enclosure re ON re.report_id = ru.report_id and re.report_year = #{reportUnitVo.reportYear}
+        <where>
+            <if test="reportUnitVo.unitName != null and reportUnitVo.unitName != ''">
+                and ru.report_unit_name like concat('%',#{reportUnitVo.unitName},'%')
+            </if>
+        </where>
+    </select>
+
+
+    <resultMap id="businessHousingMap" type="com.ryzw.housemanager.dto.BusinessHouseDto">
+        <id column="yard_id" property="yardId"/>
+        <result column="yard_position" property="yardPosition"/>
+        <result column="region_name" property="regionName"/>
+        <collection property="houseIdList" ofType="java.lang.String">
+            <id column="house_id" property="houseIdList"/>
+        </collection>
+    </resultMap>
+
+    <!--业务用房列表-->
+    <select id="businessHousing" resultMap="businessHousingMap">
+        SELECT DISTINCT
+        y.yard_id,
+        y.yard_position,
+        r.region_name,
+        h.house_id
+        FROM
+        house h
+        LEFT JOIN build b ON b.build_id = h.build_id
+        LEFT JOIN yard y ON y.yard_id = b.yard_id
+        LEFT JOIN region r ON r.region_id = y.region_id
+        LEFT JOIN (SELECT max(housingUse_id) as housingUse_id, house_id from housingUse hu GROUP BY house_id) hu on h.house_id = hu.house_id
+        LEFT JOIN (SELECT max(housingUse_id) as housingUse_id ,unit_id from use_unit GROUP BY housingUse_id,unit_id) uu on uu.housingUse_id = hu.housingUse_id
+        <where>
+            h.houseType_id = 5
+            <choose>
+                <when test="unitIds != null and unitIds.size() > 0">
+                    and
+                    uu.unit_id in
+                    <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and
+                    uu.unit_id = 0
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+
+    <!--查询主要使用单位集合-->
+    <select id="selectUnitList" resultType="java.lang.String">
+        SELECT DISTINCT
+        u.unit_name
+        FROM
+        use_unit uu
+        LEFT JOIN housingUse hu ON uu.housingUse_id = hu.housingUse_id
+        LEFT JOIN unit u on u.unit_id = uu.unit_id
+        <where>
+            <choose>
+                <when test="houseIdList != null and houseIdList.size() >0">
+                    and hu.house_id IN
+                    <foreach item="item" collection="houseIdList" index="index" open="(" separator="," close=")">
+                        #{item}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and hu.house_id is null
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+
+    <!--查询面积-->
+    <select id="selectArea" resultType="com.ryzw.housemanager.dto.BusinessAreaDto">
+        SELECT
+        SUM(b.build_area) AS buildArea,
+        SUM(b.covered_area) AS coveredArea,
+        MIN(b.build_date) AS buildDate
+        FROM
+        yard y
+        LEFT JOIN build b ON b.yard_id = y.yard_id
+        <where>
+            <if test="yardId != null">
+                AND y.yard_id = #{yardId}
+            </if>
+        </where>
+        GROUP BY
+        y.yard_id
+    </select>
+
+    <!--查询权属登记情况-->
+    <select id="selectRemark" resultType="java.lang.String">
+        SELECT bu.warrant_remark FROM
+        (SELECT
+        MIN(b.build_date) as build_date
+        FROM
+        build b
+        where b.yard_id = #{yardId}) f
+        LEFT JOIN build bu on bu.build_date = f.build_date
+        ORDER BY bu.build_id LIMIT 1
+    </select>
+
+
+    <!--查询所有建设的配置楼栋-->
+    <select id="selectBuildConfigure" resultType="com.ryzw.housemanager.entity.ConfigureBuild">
+        SELECT
+            cb.configure_id,
+            cb.build_id
+        FROM
+            configure_build cb
+        LEFT JOIN configure c on c.configure_id = cb.configure_id
+        where c.apply_status = 1 and c.allocation_plan = 4
+    </select>
+
+    <!--查询建设楼栋相关信息-->
+    <select id="constructHouseList" resultType="com.ryzw.housemanager.dto.ConstructHouseDto">
+        SELECT
+        b.build_area,
+        y.yard_position,
+        u.unit_name
+        FROM
+        build b
+        LEFT JOIN yard y ON y.yard_id = b.yard_id
+        LEFT JOIN unit u ON u.unit_id = b.property_unit_id
+        <where>
+            b.build_id = #{buildId} and DATE_FORMAT(b.build_date,'%Y') = DATE_FORMAT(CURDATE(),'%Y')
+            <choose>
+                <when test="unitIds != null and unitIds.size() >0">
+                    and u.unit_id in
+                    <foreach item="item" collection="unitIds" index="index" open="(" separator="," close=")">
+                        #{item}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and u.unit_id = 0
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+
+    <!--查询建设楼栋主要使用单位-->
+    <select id="constructHouseUnitList" resultType="java.lang.String">
+        SELECT DISTINCT
+            u.unit_name
+        FROM
+            use_unit uu
+        LEFT JOIN housingUse hu ON uu.housingUse_id = hu.housingUse_id
+        LEFT JOIN unit u ON u.unit_id = uu.unit_id
+        where hu.house_id IN
+        (SELECT h.house_id FROM build b LEFT JOIN house h on h.build_id = b.build_id where b.build_id = #{buildId})
+    </select>
+
+
+</mapper>

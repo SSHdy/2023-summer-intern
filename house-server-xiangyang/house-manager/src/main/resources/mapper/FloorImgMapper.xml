@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.FloorImgMapper">
+    <resultMap id="floorImgResultMap" type="com.ryzw.housemanager.entity.FloorImg">
+        <id column="floorImg_id" property="floorimgId"/>
+        <result column="floor_id" property="floorId"/>
+        <result column="floorImg_url" property="floorimgUrl"/>   
+		</resultMap>
+
+    <select id="selectByBuildId" parameterType="java.lang.Long" resultMap="floorImgResultMap">
+        SELECT floorImg_id,floor_id,floorImg_url FROM floorImg WHERE floor_id = #{floorId,jdbcType=BIGINT}
+    </select>
+</mapper>

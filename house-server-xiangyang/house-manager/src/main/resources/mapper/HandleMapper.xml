@@ -1,0 +1,550 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.HandleMapper">
+
+    <resultMap id="handleDetailToHouseMap" type="com.ryzw.housemanager.dto.HandleDetailDto">
+        <id column="handle_id" property="handleId"/>
+        <result column="apply_reason" property="applyReason"/>
+        <result column="apply_status" property="applyStatus"/>
+        <result column="handle_date" property="handleDate"/>
+        <result column="handle_applicant" property="handleApplicant"/>
+        <result column="is_house" property="isHouse"/>
+        <result column="unit_name" property="unitName"/>
+        <collection property="buildPositionDtoList" ofType="com.ryzw.housemanager.dto.BuildPositionDto">
+            <id column="build_id" property="buildId"/>
+            <result column="build_name" property="buildName"/>
+            <result column="yard_name" property="yardName"/>
+            <result column="yard_id" property="yardId"/>
+            <collection property="floorNameDtoList" ofType="com.ryzw.housemanager.dto.FloorNameDto">
+                <id column="floor_name" property="floorName"/>
+                <collection property="houseNumber" ofType="com.ryzw.housemanager.dto.HouseNumDto">
+                    <id column="house_id" property="houseId"/>
+                    <result column="house_number" property="houseNumber"/>
+                </collection>
+            </collection>
+        </collection>
+    </resultMap>
+
+    <resultMap id="handleDetailToBuildMap" type="com.ryzw.housemanager.dto.HandleDetailDto">
+        <id column="handle_id" property="handleId"/>
+        <result column="apply_reason" property="applyReason"/>
+        <result column="apply_status" property="applyStatus"/>
+        <result column="handle_date" property="handleDate"/>
+        <result column="handle_applicant" property="handleApplicant"/>
+        <result column="is_house" property="isHouse"/>
+        <result column="unit_name" property="unitName"/>
+        <collection property="buildPositionDtoList" ofType="com.ryzw.housemanager.dto.BuildPositionDto">
+            <id column="build_id" property="buildId"/>
+            <result column="build_name" property="buildName"/>
+            <result column="yard_name" property="yardName"/>
+            <result column="yard_id" property="yardId"/>
+        </collection>
+    </resultMap>
+
+
+    <!--处置申请详情(到房间)-->
+    <select id="handleDetailToHouse" resultMap="handleDetailToHouseMap">
+        SELECT
+        h.handle_id,
+        h.apply_reason,
+        h.apply_status,
+        h.unit_name,
+        h.handle_date,
+        h.handle_applicant,
+        h.is_house,
+        b.build_id,
+        y.yard_name,
+        b.build_name,
+        y.yard_id,
+        hou.house_id,
+        hou.floor_name,
+        hou.house_number
+        FROM
+        handle h
+        LEFT JOIN handle_module hm ON hm.handle_id = h.handle_id
+        LEFT JOIN build b ON b.build_id = hm.build_id
+        LEFT JOIN yard y ON y.yard_id = b.yard_id
+        LEFT JOIN house_history hou ON hou.house_id = hm.house_id
+        <where>
+            <if test="handleId != null">
+                and h.handle_id = #{handleId}
+            </if>
+            and hou.house_number is not null
+        </where>
+    </select>
+
+    <!--处置申请详情(到楼栋)-->
+    <select id="handleDetailToBuild" resultMap="handleDetailToBuildMap">
+        SELECT
+        h.handle_id,
+        h.apply_reason,
+        h.apply_status,
+        h.unit_name,
+        h.handle_date,
+        h.handle_applicant,
+        h.is_house,
+        b.build_id,
+        y.yard_name,
+        b.build_name,
+        y.yard_id
+        FROM
+        handle h
+        LEFT JOIN handle_module hm ON hm.handle_id = h.handle_id
+        LEFT JOIN build b ON b.build_id = hm.build_id
+        LEFT JOIN yard y ON y.yard_id = b.yard_id
+        <where>
+            <if test="handleId != null">
+                and h.handle_id = #{handleId}
+            </if>
+        </where>
+    </select>
+
+
+    <!--查询处置总面积-->
+    <select id="selectAreaSum" resultType="java.lang.Float">
+        SELECT
+        SUM(ho.house_use_area)
+        FROM
+        handle h
+        LEFT JOIN handle_module hm ON hm.handle_id = h.handle_id
+        LEFT JOIN house_history ho ON ho.house_id = hm.house_id
+        <where>
+            <if test="handleId != null">
+                and h.handle_id = #{handleId}
+            </if>
+        </where>
+    </select>
+
+    <!--处置申请和审批列表-->
+    <select id="handleList" resultType="com.ryzw.housemanager.dto.HandleDetailDto">
+        SELECT
+        h.handle_id,
+        h.handle_applicant,
+        h.apply_reason,
+        h.apply_status,
+        h.handle_date,
+        h.unit_name,
+        h.task_id,
+        h.process_instance_id,
+        h.step,
+        h.handle_way,
+        SUM(ho.house_use_area) AS handleArea
+        FROM
+        handle h
+        LEFT JOIN handle_module hm ON hm.handle_id = h.handle_id
+        LEFT JOIN build b ON b.build_id = hm.build_id
+        LEFT JOIN yard y ON y.yard_id = b.yard_id
+        LEFT JOIN house_history ho ON ho.house_id = hm.house_id
+        <where>
+            <if test="handleVo.houseIdList != null and handleVo.houseIdList.size()>0">
+                and hm.house_id in
+                <foreach collection="handleVo.houseIdList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="handleVo.yardIdList != null and handleVo.yardIdList.size()>0">
+                and hm.yard_id in
+                <foreach collection="handleVo.yardIdList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="handleVo.unitId != null">
+                and h.unit_id = #{handleVo.unitId}
+            </if>
+            <if test="handleVo.startTime != null">
+                and h.handle_date &gt; #{handleVo.startTime}
+            </if>
+            <if test="handleVo.endTime != null">
+                and h.handle_date &lt; #{handleVo.endTime}
+            </if>
+            <if test="handleVo.handleIdList != null and handleVo.handleIdList.size()>0">
+                and h.handle_id in
+                <foreach collection="handleVo.handleIdList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="handleVo.userId !=null">
+                and h.handle_applicant_id = #{handleVo.userId}
+            </if>
+        </where>
+        GROUP BY handle_id
+        order by handle_id desc
+    </select>
+
+    <!--查询处置位置-->
+    <select id="selectHandlePosition" resultType="com.ryzw.housemanager.dto.BuildPositionDto">
+        SELECT distinct
+        h.handle_id,
+        b.build_id,
+        y.yard_name,
+        b.build_name
+        FROM
+        handle h
+        LEFT JOIN handle_module hm ON hm.handle_id = h.handle_id
+        LEFT JOIN build b ON b.build_id = hm.build_id
+        LEFT JOIN yard y ON y.yard_id = b.yard_id
+        <where>
+            <if test="handleId != null">
+                and h.handle_id = #{handleId}
+            </if>
+        </where>
+    </select>
+
+    <resultMap id="selectHandlePoMap" type="com.ryzw.housemanager.dto.HandlePositionDto">
+        <id column="yard_id" property="yardId"/>
+        <result column="yard_name" property="yardName"/>
+        <collection property="buildList" ofType="com.ryzw.housemanager.dto.BuildPositionDto">
+            <id column="build_id" property="buildId"/>
+            <result column="build_name" property="buildName"/>
+            <collection property="floorNameDtoList" ofType="com.ryzw.housemanager.dto.FloorNameDto">
+                <id column="floor_name" property="floorName"/>
+                <collection property="houseNumber" ofType="com.ryzw.housemanager.dto.HouseNumDto">
+                    <id column="house_id" property="houseId"/>
+                    <result column="house_number" property="houseNumber"/>
+                </collection>
+            </collection>
+        </collection>
+    </resultMap>
+
+    <!--新增时查询可以处置的位置-->
+    <select id="selectHandlePo" resultMap="selectHandlePoMap">
+        SELECT DISTINCT
+        y.yard_id,
+        b.build_id,
+        y.yard_name,
+        b.build_name,
+        h.house_number,
+        h.floor_name,
+        h.house_id,
+        f.house_id,
+        f.build_id,
+        te.build_id
+        FROM yard y
+        LEFT JOIN build b ON b.yard_id = y.yard_id
+        LEFT JOIN house h ON h.build_id = b.build_id
+        LEFT JOIN (
+        SELECT DISTINCT
+        house_id,build_id
+        FROM
+        handle h
+        LEFT JOIN handle_module hm ON hm.handle_id = h.handle_id
+        WHERE
+        (
+        h.apply_status = 1
+        AND hm.house_id IS NOT NULL
+        AND h.handle_way IN (3, 4, 7)
+        )
+        OR (h.apply_status IN(0, 3))
+        ) f ON f.house_id = h.house_id
+        LEFT JOIN (SELECT DISTINCT
+        house_id,
+        build_id
+        FROM
+        handle h
+        LEFT JOIN handle_module hm ON hm.handle_id = h.handle_id
+        WHERE
+        (
+        h.apply_status = 1
+        AND hm.house_id IS NOT NULL
+        AND h.handle_way IN (3, 4, 7)
+        )
+        OR (h.apply_status IN(0, 3))) te on te.build_id = b.build_id
+        <where>
+            <if test="unitId != null">
+                and b.property_unit_id = #{unitId}
+            </if>
+            and ((f.house_id IS NULL and f.build_id is null and te.build_id is null) or ( h.house_id is not null and f.house_id IS NULL and f.build_id is null and te.build_id is not null))
+        </where>
+        order by y.yard_id ,b.build_id,h.floor_name,h.house_number
+    </select>
+
+    <!--修改时查询可以处置的位置-->
+    <select id="selectHandlePoUp" resultMap="selectHandlePoMap">
+        SELECT DISTINCT
+        y.yard_id,
+        b.build_id,
+        y.yard_name,
+        b.build_name,
+        h.house_number,
+        h.floor_name,
+        h.house_id,
+        f.house_id,
+        f.build_id,
+        te.build_id
+        FROM
+        yard y
+        LEFT JOIN build b ON b.yard_id = y.yard_id
+        LEFT JOIN house h ON h.build_id = b.build_id
+        LEFT JOIN (
+        SELECT DISTINCT
+        house_id,
+        build_id
+        FROM
+        handle h
+        LEFT JOIN handle_module hm ON hm.handle_id = h.handle_id
+        WHERE
+        (
+        h.apply_status = 1
+        AND hm.house_id IS NOT NULL
+        AND h.handle_way IN (3, 4, 7)
+        )
+        OR (h.apply_status IN(0, 3))
+        ) f ON f.house_id = h.house_id
+        LEFT JOIN (SELECT DISTINCT
+        house_id,
+        build_id
+        FROM
+        handle h
+        LEFT JOIN handle_module hm ON hm.handle_id = h.handle_id
+        WHERE
+        (
+        h.apply_status = 1
+        AND hm.house_id IS NOT NULL
+        AND h.handle_way IN (3, 4, 7)
+        )
+        OR (h.apply_status IN(0, 3))) te on te.build_id = b.build_id
+        <where>
+            <if test="unitId != null">
+                and b.property_unit_id = #{unitId}
+            </if>
+            AND ((f.house_id IS NULL and f.build_id is null and te.build_id is null) or ( h.house_id is not null and f.house_id IS NULL and f.build_id is null and te.build_id is not null))
+
+            <!--and b.build_id NOT IN (-->
+            <!--<include refid="sucessHandler"></include>-->
+            <!--)-->
+            <if test="handleId != null">
+                OR (h.house_id in(SELECT house_id FROM handle h LEFT JOIN handle_module hm ON h.handle_id = hm.handle_id
+                where h.handle_id = #{handleId}))
+                OR (b.build_id in(SELECT build_id FROM handle h LEFT JOIN handle_module hm ON h.handle_id = hm.handle_id
+                where h.handle_id = #{handleId} and hm.house_id is null))
+            </if>
+        </where>
+        order by y.yard_id ,b.build_id,h.floor_name,h.house_number
+    </select>
+
+
+    <!--只查询最后一条记录，并且非处置不成功的-->
+    <sql id="sucessHandler">
+        select f.build_id
+            from handle hl
+            INNER JOIN  (
+            SELECT hm.build_id,max(hm.handle_id) as handle_id
+            FROM handle h
+            LEFT JOIN handle_module hm
+            ON h.handle_id = hm.handle_id
+            group by hm.build_id) f
+            on hl.handle_id = f.handle_id
+             where hl.handle_way != 5
+    </sql>
+
+    <!--查询所有院落楼栋树-->
+    <select id="selectAllHandlePo" resultMap="selectHandlePoMap">
+        SELECT
+        b.build_id,
+        b.build_name,
+        y.yard_id,
+        y.yard_name,
+        h.house_number,
+        h.floor_name,
+        h.house_id
+        FROM
+            build b
+        LEFT JOIN yard y ON y.yard_id = b.yard_id
+        LEFT JOIN house h ON h.build_id = b.build_id
+        order by h.floor_name desc
+    </select>
+
+    <select id="handleLs" resultType="com.ryzw.housemanager.dto.HandleDetailDto">
+        SELECT
+        h.handle_id,
+        h.handle_applicant,
+        h.apply_reason,
+        h.apply_status,
+        h.handle_date,
+        h.unit_name,
+        h.task_id,
+        h.process_instance_id,
+        h.step,
+        h.handle_way,
+        SUM(ho.house_use_area) AS handleArea
+        FROM
+        handle h
+        LEFT JOIN handle_module hm ON hm.handle_id = h.handle_id
+        LEFT JOIN build b ON b.build_id = hm.build_id
+        LEFT JOIN yard y ON y.yard_id = b.yard_id
+        LEFT JOIN house_history ho ON ho.house_id = hm.house_id
+        <where>
+            h.apply_status = 1
+            and h.handle_way NOT IN ( 2, 6 )
+            <if test="hL.houseIdList != null and hL.houseIdList.size()>0">
+                and hm.house_id in
+                <foreach collection="hL.houseIdList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="hL.yardIdList != null and hL.yardIdList.size()>0">
+                and hm.yard_id in
+                <foreach collection="hL.yardIdList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="hL.unitId != null">
+                and h.unit_id = #{hL.unitId}
+            </if>
+            <if test="hL.startTime != null">
+                and h.handle_date &gt; #{hL.startTime}
+            </if>
+            <if test="hL.endTime != null">
+                and h.handle_date &lt; #{hL.endTime}
+            </if>
+
+            <if test="hL.handleWay !=null">
+                and h.handle_way = #{hL.handleWay}
+            </if>
+        </where>
+        GROUP BY handle_id
+        order by handle_id desc
+    </select>
+
+    <!--  查询处置列表（不包含出租出借）  -->
+    <select id="handleLsDetail" resultType="com.ryzw.housemanager.dto.HandleLsDto">
+        SELECT DISTINCT
+        hl.handle_id,
+        hl.apply_reason,
+        hl.apply_status,
+        hl.handle_date,
+        hl.handle_applicant,
+        hl.handle_way,
+        hl.unit_id,
+        hl.unit_name,
+        y.yard_id,
+        y.yard_name,
+        b.build_id,
+        b.build_name,
+        hl.is_house,
+        h.house_id,
+        h.floor_name,
+        h.house_number
+        FROM
+        handle hl
+        LEFT JOIN handle_module hm ON hm.handle_id = hl.handle_id
+        LEFT JOIN build b ON b.build_id = hm.build_id
+        LEFT JOIN yard y ON y.yard_id = b.yard_id
+        LEFT JOIN house_history h ON h.house_id = hm.house_id
+        <where>
+            hl.handle_way NOT IN ( 2, 6 )
+            <if test="hL.id != null">
+                AND hl.handle_id = #{hL.id}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectHandleCount" resultType="com.ryzw.housemanager.entity.HandleWorkStatistics">
+        SELECT
+        (SELECT count(0) FROM handle
+        <where>
+            <if test="WorkStatistics.handleWay !=null">
+                AND handle_way = #{WorkStatistics.handleWay}
+            </if>
+            AND apply_status = 1
+            <if test="WorkStatistics.applyDateMonth!=null">
+                AND date_format(handle_date,'%Y-%m') = #{WorkStatistics.applyDateMonth}
+            </if>
+            <if test="WorkStatistics.applyDateYear!=null">
+                AND date_format(handle_date,'%Y') = #{WorkStatistics.applyDateYear}
+            </if>
+            <if test="WorkStatistics.unitIdList!=null and WorkStatistics.unitIdList.size()>0">
+                AND unit_id in
+                <foreach collection="WorkStatistics.unitIdList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        ) auditCount,
+        SUM(ho.house_use_area) handleArea
+        FROM
+        handle h
+        LEFT JOIN handle_module hm ON hm.handle_id = h.handle_id
+        LEFT JOIN house_history ho ON ho.house_id = hm.house_id
+        <where>
+            <if test="WorkStatistics.handleWay !=null">
+                AND h.handle_way = #{WorkStatistics.handleWay}
+            </if>
+            <if test="WorkStatistics.applyDateMonth!=null">
+                AND date_format(h.handle_date,'%Y-%m') = #{WorkStatistics.applyDateMonth}
+            </if>
+            <if test="WorkStatistics.applyDateYear!=null">
+                AND date_format(h.handle_date,'%Y') = #{WorkStatistics.applyDateYear}
+            </if>
+            <if test="WorkStatistics.unitIdList!=null and WorkStatistics.unitIdList.size()>0">
+                AND h.unit_id in
+                <foreach collection="WorkStatistics.unitIdList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+            AND h.apply_status = 1
+        </where>
+    </select>
+
+    <select id="selectHandleIds" resultType="com.ryzw.housemanager.entity.Handle">
+        SELECT handle_id FROM handle
+        <where>
+            <if test="WorkStatistics.handleWay !=null">
+                AND handle_way = #{WorkStatistics.handleWay}
+            </if>
+            <if test="WorkStatistics.applyDateMonth!=null">
+                AND date_format(handle_date,'%Y-%m') = #{WorkStatistics.applyDateMonth}
+            </if>
+            <if test="WorkStatistics.applyDateYear!=null">
+                AND date_format(handle_date,'%Y') = #{WorkStatistics.applyDateYear}
+            </if>
+            <if test="WorkStatistics.unitIdList!=null and WorkStatistics.unitIdList.size()>0">
+                AND unit_id in
+                <foreach collection="WorkStatistics.unitIdList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+            AND apply_status = 1
+        </where>
+    </select>
+
+    <!--查询处置工作统计日期范围-->
+    <select id="statisticsDateRange" resultType="com.ryzw.housemanager.dto.DateRangeDto">
+        SELECT
+        date_format(MAX(handle_date),'%Y') as maxYear,
+        date_format(MIN(handle_date),'%Y') as minYear,
+        date_format(MAX(handle_date),'%Y-%m') as maxMonth,
+        date_format(MIN(handle_date),'%Y-%m') as minMonth
+        FROM
+        handle
+        <where>
+            <if test="unitIds !=null and unitIds.size()>0">
+                and unit_id IN
+                <foreach collection="unitIds" item="item" index="index" separator="," open="("
+                         close=")">
+                    #{item}
+                </foreach>
+            </if>
+             and apply_status = 1
+        </where>
+    </select>
+
+    <!--查询房间处置关系数量-->
+    <select id="handleCount" resultType="int">
+        SELECT
+        COUNT(*)
+        FROM
+        handle_module hm
+        LEFT JOIN handle h ON h.handle_id = hm.handle_id
+        <where>
+            <if test="delHouseIdList !=null and delHouseIdList.size()>0">
+                AND hm.house_id in
+                <foreach collection="delHouseIdList" item="item" index="index" separator="," open="(" close=")">
+                #{item}
+                </foreach>
+            </if>
+            AND h.handle_way !=5 and h.apply_status = 3
+        </where>
+    </select>
+
+</mapper>

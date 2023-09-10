@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.RentMapper">
+
+    <resultMap id="rentEnclosureMap" type="com.ryzw.housemanager.dto.RentDetailDto">
+        <id column="rent_id" property="rentId"/>
+        <result column="rent_mode" property="rentMode"/>
+        <result column="lessee_use" property="lesseeUse"/>
+        <result column="lesseeArea" property="lesseeArea"/>
+        <result column="lessee_years" property="lesseeYears"/>
+        <result column="renter" property="renter"/>
+        <result column="rent_begin" property="rentBegin"/>
+        <result column="rent_end" property="rentEnd"/>
+        <result column="rent_money" property="rentMoney"/>
+        <result column="contacts" property="contacts"/>
+        <result column="deposit" property="deposit"/>
+        <result column="payment_time" property="paymentTime"/>
+        <result column="payment_cycle" property="paymentCycle"/>
+        <result column="rent_type" property="rentType"/>
+        <result column="contact_phone" property="contactPhone"/>
+        <result column="remark" property="remark"/>
+        <result column="covered_area" property="coveredArea"/>
+        <result column="office_building" property="officeBuilding"/>
+        <result column="affiliated_unit" property="affiliatedUnit"/>
+        <result column="financial_code" property="financialCode"/>
+        <result column="state" property="state"/>
+        <collection property="yardList" ofType="com.ryzw.housemanager.dto.YardRentDto">
+            <id column="yard_id" property="yardId"/>
+            <result column="yard_name" property="yardName"/>
+            <collection property="buildList" ofType="com.ryzw.housemanager.dto.BuildRentDto">
+                <id column="build_id" property="buildId"/>
+                <result column="build_name" property="buildName"/>
+                <collection property="floorNameList" ofType="com.ryzw.housemanager.dto.FloorRentDto">
+                    <id column="floor_name" property="floorName"/>
+                    <collection property="houseNameList" ofType="com.ryzw.housemanager.dto.HouseRentDto">
+                        <id column="house_id" property="houseId"/>
+                        <result column="house_number" property="houseNumber"/>
+                    </collection>
+                </collection>
+            </collection>
+        </collection>
+        <collection property="enclosureList" ofType="com.ryzw.housemanager.entity.Enclosure">
+            <id column="enclosure_id" property="enclosureId"></id>
+            <result column="enclosure_type" property="enclosureType"></result>
+            <result column="enclosure_name" property="enclosureName"></result>
+            <result column="enclosure_virtual_url" property="enclosureVirtualUrl"></result>
+            <result column="enclosure_physics_url" property="enclosurePhysicsUrl"></result>
+        </collection>
+        <collection property="rentRelationshipIdList" ofType="java.lang.Long">
+            <id column="rent_relationship_id" property="rentRelationshipIdList"></id>
+        </collection>
+    </resultMap>
+
+    <!--查询租赁详情信息-->
+    <select id="rentDetail" resultMap="rentEnclosureMap">
+        SELECT
+        r.rent_id,
+        r.rent_mode,
+        r.lessee_use,
+        r.lessee_years,
+        r.renter,
+        r.rent_begin,
+        r.rent_end,
+        r.deposit,
+        r.rent_money,
+        r.rent_type,
+        r.payment_time,
+        r.payment_cycle,
+        r.contacts,
+        r.contact_phone,
+        r.remark,
+        r.covered_area,
+        r.office_building,
+        r.affiliated_unit,
+        r.financial_code,
+        r.state,
+        b.build_name,
+        b.build_id,
+        y.yard_name,
+        y.yard_id,
+        h.floor_name,
+        ho.house_use_area as lesseeArea,
+        ho.house_number,
+        ho.house_id,
+        rr.rent_relationship_id,
+        e.enclosure_physics_url,
+        e.enclosure_id,
+        e.enclosure_name,
+        e.enclosure_type,
+        e.enclosure_virtual_url
+        FROM
+        rent r
+        LEFT JOIN rent_relationship rr ON r.rent_id = rr.rent_id
+        LEFT JOIN enclosure e ON r.rent_id = e.rent_id
+        LEFT JOIN housingUse h ON rr.housingUse_id = h.housingUse_id
+        LEFT JOIN yard y ON y.yard_id = h.yard_id
+        LEFT JOIN build b ON b.build_id = h.build_id
+        LEFT JOIN house ho ON h.house_id = ho.house_id
+        <where>
+            <if test="rentId != null and rentId !=''">
+                and r.rent_id = #{rentId}
+            </if>
+        </where>
+    </select>
+
+
+    <!--查询租赁列表信息-->
+    <select id="getList" resultType="com.ryzw.housemanager.dto.RentListDto">
+        SELECT DISTINCT
+        r.rent_id,
+        r.rent_mode,
+        r.lessee_use,
+        r.lessee_years,
+        r.renter,
+        r.rent_begin,
+        r.rent_end,
+        r.deposit,
+        r.rent_money,
+        r.rent_type,
+        r.payment_time,
+        r.type,
+        h.is_use as rentState
+        FROM rent r
+        LEFT JOIN rent_relationship rr on r.rent_id = rr.rent_id
+        LEFT JOIN housingUse h ON rr.housingUse_id = h.housingUse_id
+        INNER JOIN ( SELECT MAX( housingUse_id ) AS housingUse_id FROM housingUse GROUP BY
+        house_id,yard_id
+        ) AS hs on hs.housingUse_id = h.housingUse_id
+        <where>
+            <if test="RentPageVo.type!= null">
+                and r.type = #{RentPageVo.type}
+            </if>
+            <if test="RentPageVo.renter!= null and RentPageVo.renter != ''">
+                and r.renter like concat('%',#{RentPageVo.renter},'%')
+            </if>
+        </where>
+        group by r.rent_id, h.is_use
+        HAVING count(h.housingUse_id) > 0
+        <if test="RentPageVo.rentState != null">
+            and h.is_use = #{RentPageVo.rentState}
+        </if>
+        order by r.rent_id desc
+    </select>
+
+    <!--出租租金提醒列表-->
+    <select id="rentRmindList" resultType="com.ryzw.housemanager.dto.RentListDto">
+        SELECT DISTINCT
+        r.rent_id,
+        r.rent_mode,
+        r.lessee_use,
+        r.lessee_years,
+        r.renter,
+        r.rent_begin,
+        r.rent_end,
+        r.deposit,
+        r.rent_money,
+        r.rent_type,
+        r.payment_time,
+        r.type,
+        h.is_use as rentState
+        FROM rent r
+        LEFT JOIN rent_relationship rr on r.rent_id = rr.rent_id
+        LEFT JOIN housingUse h ON rr.housingUse_id = h.housingUse_id
+        <where>
+            <if test="RentPageVo.renter!= null and RentPageVo.renter != ''">
+                and r.renter like concat('%',#{RentPageVo.renter},'%')
+            </if>
+            and DATE_SUB(payment_time,INTERVAL #{rentRemindDay} DAY) &lt;= curdate() and curdate() &lt;= r.payment_time
+            and r.type = 1 and r.is_read = 0 and h.is_use = 1
+        </where>
+        order by r.rent_id desc
+    </select>
+
+    <!--查询出租租金提醒数量-->
+    <select id="rentRemindNum" resultType="java.lang.Integer">
+        SELECT COUNT(rent_id) FROM(
+        SELECT DISTINCT
+        r.rent_id
+        FROM
+        rent r
+        LEFT JOIN rent_relationship rr ON r.rent_id = rr.rent_id
+        LEFT JOIN housingUse h ON rr.housingUse_id = h.housingUse_id
+        WHERE
+        DATE_SUB(payment_time, INTERVAL #{rentRemindDay} DAY) &lt;= curdate()
+        AND curdate() &lt;= payment_time
+        AND type = 1
+        AND is_read = 0
+        AND h.is_use = 1
+        ) t
+    </select>
+
+
+    <update id="rentWithdrawal">
+        update
+        housingUse hu
+        right join rent_relationship r
+        on hu.housingUse_id = r.housingUse_id
+        set hu.is_use = 0
+        where r.rent_id = #{rentId}
+    </update>
+
+    <!--出租和出借到期提醒列表-->
+    <select id="rentExpireList" resultType="com.ryzw.housemanager.dto.RentListDto">
+        SELECT DISTINCT
+        r.rent_id,
+        r.rent_mode,
+        r.lessee_use,
+        r.lessee_years,
+        r.renter,
+        r.rent_begin,
+        r.rent_end,
+        r.deposit,
+        r.rent_money,
+        r.rent_type,
+        r.payment_time,
+        r.type,
+        h.is_use as rentState
+        FROM rent r
+        LEFT JOIN rent_relationship rr on r.rent_id = rr.rent_id
+        LEFT JOIN housingUse h ON rr.housingUse_id = h.housingUse_id
+        <where>
+            <if test="RentPageVo.renter!= null and RentPageVo.renter != ''">
+                and r.renter like concat('%',#{RentPageVo.renter},'%')
+            </if>
+            <if test="RentPageVo.type!= null">
+                and r.type = #{RentPageVo.type}
+            </if>
+            and DATE_SUB(rent_end,INTERVAL #{rentExpireDay} DAY) &lt;= curdate() and curdate() &lt;= r.rent_end
+            and r.is_expire = 0 and h.is_use = 1
+        </where>
+        order by r.rent_id desc
+    </select>
+
+    <!--查询出租和出借到期提醒数量-->
+    <select id="rentExpireNum" resultType="java.lang.Integer">
+        SELECT COUNT(rent_id) FROM(
+        SELECT DISTINCT
+        r.rent_id
+        FROM
+        rent r
+        LEFT JOIN rent_relationship rr ON r.rent_id = rr.rent_id
+        LEFT JOIN housingUse h ON rr.housingUse_id = h.housingUse_id
+        WHERE
+        DATE_SUB(rent_end, INTERVAL #{rentExpireDay} DAY) &lt;= curdate()
+        AND curdate() &lt;= rent_end
+        AND is_expire = 0
+        AND h.is_use = 1
+        ) t
+    </select>
+
+    <!--查询房间颜色对象集合-->
+    <select id="selectHouseList" resultType="com.ryzw.housemanager.dto.HouseColorDto">
+        SELECT
+            h.house_id,
+            ht.color_type
+        FROM
+            house h
+        LEFT JOIN houseType ht ON ht.houseType_id = h.houseType_id
+        <where>
+            <if test="houseIdList !=null and houseIdList.size()>0">
+                AND h.house_id in
+                <foreach collection="houseIdList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+</mapper>

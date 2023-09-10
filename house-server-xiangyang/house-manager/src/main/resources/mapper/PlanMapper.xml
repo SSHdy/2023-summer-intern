@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.PlanMapper">
+
+    <delete id="deleteByPlanId">
+      DELETE pn,cpd,cpa,cot,cnt
+        FROM plan pn
+        LEFT JOIN configure_plan_change_data cpd
+        ON pn.plan_id = cpd.plan_id
+        LEFT JOIN configure_plan_data cpa
+        ON pn.plan_id = cpa.plan_id
+        LEFT JOIN configure_plan_old_unit cot
+        ON cpa.configure_plan_data_id = cot.configure_plan_data_id
+        LEFT JOIN configure_plan_new_unit cnt
+        ON cpa.configure_plan_data_id = cnt.configure_plan_data_id
+       <where>
+           <if test="planId !=null">
+              and pn.plan_id = #{planId}
+           </if>
+       </where>
+    </delete>
+
+</mapper>

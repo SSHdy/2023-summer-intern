@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.ConfigurePlanDataMapper">
+
+    <delete id="deleteByCPDataIds" parameterType="java.util.List">
+        DELETE cpa,cot,cnt
+        FROM configure_plan_data cpa
+        LEFT JOIN configure_plan_old_unit cot
+        ON cpa.configure_plan_data_id = cot.configure_plan_data_id
+        LEFT JOIN configure_plan_new_unit cnt
+        ON cpa.configure_plan_data_id = cnt.configure_plan_data_id
+        <where>
+            <if test="configurePlanDataIds != null and configurePlanDataIds.size()> 0">
+                cpa.configure_plan_data_id in
+                <foreach collection="configurePlanDataIds" item="configurePlanDataId" index="index" separator=","
+                         open="(" close=")">
+                    #{configurePlanDataId}
+                </foreach>
+            </if>
+        </where>
+    </delete>
+
+    <delete id="deleteByConfigureId">
+      DELETE cpd,cpou,cpnu,cpcd
+      FROM configure_plan_data cpd
+      LEFT JOIN configure_plan_old_unit cpou
+      ON cpd.configure_plan_data_id = cpou.configure_plan_data_id
+      LEFT JOIN configure_plan_new_unit cpnu
+      ON cpd.configure_plan_data_id = cpnu.configure_plan_data_id
+      LEFT JOIN configure_plan_change_data cpcd
+      ON cpd.plan_id = cpcd.plan_id
+      <where>
+        <if test="configureId !=null">
+          AND cpd.configure_id = #{configureId}
+        </if>
+      </where>
+    </delete>
+
+    <delete id="deleteByHouseId">
+      DELETE cpd,cpou,cpnu
+      FROM configure_plan_data cpd
+      LEFT JOIN configure_plan_old_unit cpou
+      ON cpd.configure_plan_data_id = cpou.configure_plan_data_id
+      LEFT JOIN configure_plan_new_unit cpnu
+      ON cpd.configure_plan_data_id = cpnu.configure_plan_data_id
+      <where>
+          <if test="houseIds != null and houseIds.size()> 0">
+              cpd.house_id in
+              <foreach collection="houseIds" item="houseId" index="index" separator="," open="(" close=")">
+                  #{houseId}
+              </foreach>
+          </if>
+      </where>
+    </delete>
+
+
+    <select id="selectConfigurePlanUnit" resultType="com.ryzw.housemanager.dto.ConfigurePlanUnitDto">
+      SELECT u.unit_name,ut.useunit_id
+      FROM 	house h
+      LEFT JOIN housingUse hu ON hu.house_id = h.house_id AND hu.is_use = 1
+      LEFT JOIN use_unit ut ON hu.housingUse_id = ut.housingUse_id
+      LEFT JOIN unit u ON ut.unit_id = u.unit_id
+      <where>
+          <if test="houseId!= null and houseId != ''">
+              and h.house_id = #{houseId}
+          </if>
+      </where>
+    </select>
+    
+    <resultMap id="selectConfigureDboMap" type="com.ryzw.housemanager.dto.ConfigureDistributionHttpDto">
+        <id column="configure_plan_data_id" property="configurePlanDataId"/>
+        <result column="yard_name" property="yardName"/>
+        <result column="build_name" property="buildName"/>
+        <result column="house_number" property="houseNumber"/>
+        <result column="house_use_area" property="roomArea"/>
+        <collection property="configureOldUnitHttpDtoList" ofType="com.ryzw.housemanager.dto.ConfigureOldUnitHttpDto">
+            <id column="configure_plan_old_unit_id" property="configurePlanOldUnitId"/>
+            <result column="oldUseUnitName" property="oldUseUnitName"/>
+        </collection>
+        <collection property="configureNewUnitHttpDtoList" ofType="com.ryzw.housemanager.dto.ConfigureNewUnitHttpDto">
+            <id column="configure_plan_new_unit_id" property="configurePlanNewUnitId"/>
+            <result column="newUseUnitName" property="newUseUnitName"/>
+        </collection>
+    </resultMap>
+
+
+    <select id="selectConfigureDbo" resultMap="selectConfigureDboMap">
+          SELECT
+            cpd.configure_plan_data_id,y.yard_name,b.build_name,h.house_number,
+        h.house_use_area,u.unit_name oldUseUnitName,ut.unit_name newUseUnitName,
+        cpou.configure_plan_old_unit_id,cpnu.configure_plan_new_unit_id
+          FROM
+        configure_plan_data cpd
+        LEFT JOIN yard y ON cpd.yard_id = y.yard_id
+        LEFT JOIN build b ON cpd.build_id =b.build_id
+        LEFT JOIN house h ON cpd.house_id = h.house_id
+        LEFT JOIN configure_plan_old_unit cpou ON cpd.configure_plan_data_id = cpou.configure_plan_data_id
+        LEFT JOIN unit u ON cpou.unit_id = u.unit_id
+        LEFT JOIN configure_plan_new_unit cpnu ON cpd.configure_plan_data_id = cpnu.configure_plan_data_id
+        LEFT JOIN unit ut ON cpnu.unit_id = ut.unit_id
+        <where>
+          <if test="configureId !=null">
+              AND cpd.configure_id = #{configureId}
+          </if>
+        </where>
+        ORDER BY cpd.configure_plan_data_id desc
+    </select>
+
+</mapper>

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.houseauthority.mapper.MenuMapper">
+
+   <select id="list" resultType="com.ryzw.houseauthority.dto.MenuDto">
+        SELECT
+        menu_id,
+        menu_title,
+        menu_url,
+        menu_pid,
+        menu_key,
+        menu_imgurl,
+        menu_img_virtual_url,
+        menu_describe,
+        is_freeze
+        FROM
+        menu
+        <where>
+            <if test="menu.isFreeze != null and menu.isFreeze != ''">
+                is_freeze = #{menu.isFreeze}
+            </if>
+        </where>
+        order by menu_id desc
+    </select>
+
+    <select id="menuListByPage" resultType="com.ryzw.houseauthority.dto.MenuChildDto">
+        SELECT
+        menu_id,
+        menu_title,
+        menu_url,
+        menu_pid,
+        menu_key,
+        menu_imgurl,
+        menu_img_virtual_url,
+        menu_describe,
+        is_freeze,
+        code,
+        menu_order,
+        display
+        FROM
+        menu
+        WHERE menu_pid = 0
+        order by menu_order asc
+    </select>
+
+    <select id="menus" resultType="com.ryzw.houseauthority.dto.MenuChildDto">
+        SELECT
+        menu_id,
+        menu_title,
+        menu_url,
+        menu_pid,
+        menu_imgurl,
+        menu_describe,
+        menu_img_virtual_url,
+        menu_key,
+        is_freeze
+        FROM
+        menu
+        WHERE menu_pid = 0
+        order by menu_order asc
+    </select>
+
+    <select id="menuList" resultType="com.ryzw.houseauthority.dto.MenuChildDto">
+        SELECT
+        menu_id,
+        menu_title,
+        menu_url,
+        menu_pid,
+        menu_key,
+        menu_imgurl,
+        menu_img_virtual_url,
+        menu_describe,
+        is_freeze,
+        code,
+        menu_order,
+        display
+        FROM
+        menu
+        order by menu_order asc
+    </select>
+
+    <!--查询用户权限菜单-->
+    <select id="userMenu" resultType="com.ryzw.houseauthority.dto.UserMenuDto">
+        SELECT
+            m.menu_id,
+            m.menu_describe,
+            m.menu_imgurl,
+            menu_img_virtual_url,
+            m.menu_key,
+            m.menu_pid,
+            m.menu_title,
+            m.menu_url
+        FROM
+            user_entity ue
+        LEFT JOIN user_role ur ON ue.user_id = ur.user_id
+        LEFT JOIN role r ON ur.role_id = r.role_id
+        LEFT JOIN role_menu rm ON r.role_id = rm.role_id
+        LEFT JOIN menu m ON rm.menu_id = m.menu_id
+        WHERE ue.is_freeze = 0
+        AND r.is_freeze = 0
+        AND m.is_freeze = 0
+        <if test="mu.id != null">
+                AND ue.user_id = #{mu.id}
+        </if>
+    </select>
+
+    <select id="userMenuList" resultType="com.ryzw.houseauthority.dto.UserMenuListDto">
+        SELECT distinct
+            ue.user_id,
+            m.*
+        FROM
+            menu m
+        RIGHT JOIN role_menu rm ON m.menu_id = rm.menu_id
+        RIGHT JOIN role r ON rm.role_id = r.role_id
+        RIGHT JOIN user_role ur ON r.role_id = ur.role_id
+        RIGHT JOIN user_entity ue ON ur.user_id = ue.user_id
+        <where>
+        <if test="menu.id != null">
+            AND ue.user_id = #{menu.id}
+        </if>
+        AND m.is_freeze = 0
+        AND r.is_freeze = 0
+        AND ue.is_freeze = 0
+        </where>
+        order by m.menu_order asc
+    </select>
+</mapper>

@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.ContractMapper">
+
+    <!--合同到期提醒列表-->
+    <select id="contractExpireList" resultType="com.ryzw.housemanager.entity.Contract">
+        SELECT
+        contract_id,
+        lease_begin_time,
+        lease_end_time,
+        contract_year,
+        payment_time,
+        rental_unit,
+        rent_money,
+        deposit
+        FROM
+        contract
+        <where>
+            <if test="contractPageVo.rentalUnit != null and contractPageVo.rentalUnit !=''">
+                rental_unit like concat('%',#{contractPageVo.rentalUnit},'%')
+            </if>
+            and DATE_SUB(lease_end_time,INTERVAL #{contractExpireDate} DAY) &lt;= curdate() and curdate() &lt;= lease_end_time
+            and is_expire = 0 and id_delete = 0
+        </where>
+          order by lease_begin_time
+    </select>
+
+
+    <!--合同租金提醒列表-->
+    <select id="contractMoneyList" resultType="com.ryzw.housemanager.entity.Contract">
+        SELECT
+        contract_id,
+        lease_begin_time,
+        lease_end_time,
+        contract_year,
+        payment_time,
+        rental_unit,
+        rent_money,
+        deposit
+        FROM
+        contract
+        <where>
+            <if test="contractPageVo.rentalUnit != null and contractPageVo.rentalUnit !=''">
+                rental_unit like concat('%',#{contractPageVo.rentalUnit},'%')
+            </if>
+            and DATE_SUB(payment_time,INTERVAL #{contractMoneyDay} DAY) &lt;= curdate() and curdate() &lt;= payment_time
+            and is_read = 0 and id_delete = 0
+        </where>
+          order by payment_time
+    </select>
+
+    <!--计算合同到期提醒数量-->
+    <select id="contractExpireAmount" resultType="java.lang.Integer">
+        SELECT
+        count(contract_id)
+        FROM
+        contract
+        where DATE_SUB(lease_end_time,INTERVAL #{contractExpireDay} DAY) &lt;= curdate() and curdate() &lt;= lease_end_time
+        and is_expire = 0 and id_delete = 0
+    </select>
+
+    <!--计算合同租金提醒数量-->
+    <select id="contractMoneyAmount" resultType="java.lang.Integer">
+        SELECT
+        count(contract_id)
+        FROM
+        contract
+        where  DATE_SUB(payment_time,INTERVAL #{contractMoneyDay} DAY) &lt;= curdate() and curdate() &lt;= payment_time
+        and is_read = 0 and id_delete = 0
+    </select>
+
+    <resultMap id="contractDetail" type="com.ryzw.housemanager.dto.ContractDetailDto">
+        <id column="contract_id" property="contractId"/>
+        <result column="lease_begin_time" property="leaseBeginTime"/>
+        <result column="lease_end_time" property="leaseEndTime"/>
+        <result column="contract_year" property="contractYear"/>
+        <result column="payment_time" property="paymentTime"/>
+        <result column="first_payment_time" property="firstPaymentTime"/>
+        <result column="is_expire" property="isExpire"/>
+        <result column="remark" property="remark"/>
+        <result column="rental_unit" property="rentalUnit"/>
+        <result column="payment_cycle" property="paymentCycle"/>
+        <result column="is_read" property="isRead"/>
+        <result column="rent_money" property="rentMoney"/>
+        <result column="contacts" property="contacts"/>
+        <result column="deposit" property="deposit"/>
+        <result column="rent_type" property="rentType"/>
+        <result column="contact_phone" property="contactPhone"/>
+        <result column="id_delete" property="idDelete"/>
+
+        <result column="yard_name" property="yardName"/>
+        <result column="build_name" property="buildName"/>
+        <result column="house_id" property="houseId"/>
+        <result column="house_number" property="houseNumber"/>
+        <result column="floor_name" property="floorName"/>
+
+        <collection property="contractEnclosures" ofType="com.ryzw.housemanager.entity.ContractEnclosure">
+            <id column="contract_enclosure_id" property="configureEnclosureId"/>
+            <result column="enclosure_physics_url" property="enclosurePhysicsUrl"/>
+            <result column="enclosure_virtual_url" property="enclosureVirtualUrl"/>
+        </collection>
+
+    </resultMap>
+
+    <select id="contractDetail" resultMap="contractDetail">
+        SELECT DISTINCT
+            y.yard_name,
+            b.build_name,
+            h.floor_name,
+            h.house_number,
+            h.house_id,
+
+            ce.enclosure_physics_url,
+            ce.enclosure_virtual_url,
+
+            c.contract_id,
+            c.lease_begin_time,
+            c.lease_end_time,
+            c.contract_year,
+            c.payment_time,
+            c.first_payment_time,
+            c.is_expire,
+            c.remark,
+            c.rental_unit,
+            c.payment_cycle,
+            c.is_read,
+            c.rent_money,
+            c.contacts,
+            c.deposit,
+            c.rent_type,
+            c.contact_phone,
+            c.id_delete
+        FROM
+            contract c
+            LEFT JOIN contract_relationship cr ON cr.contract_id = c.contract_id
+            LEFT JOIN contract_enclosure ce ON ce.contract_id = c.contract_id
+            LEFT JOIN yard y ON y.yard_id = cr.yard_id
+            LEFT JOIN build b ON b.build_id = cr.build_id
+            AND b.yard_id = y.yard_id
+            LEFT JOIN house h ON h.house_id = cr.house_id
+            AND h.build_id = b.build_id
+            <where>
+                <if test="id.id != null">
+                   and c.contract_id = #{id.id}
+                </if>
+            </where>
+    </select>
+
+</mapper>

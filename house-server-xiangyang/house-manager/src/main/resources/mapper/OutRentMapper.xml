@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.OutRentMapper">
+
+    <!--查询出租用房信息列表-->
+    <select id="selectOutRentList" resultType="com.ryzw.housemanager.dto.OutRentDto">
+        SELECT
+        ou.out_rent_id,
+        ou.build_id,
+        b.build_name,
+        ou.covered_area,
+        ou.rent_unit,
+        u.unit_name,
+        ou.rent_money,
+        ou.start_time,
+        ou.end_time,
+        ou.finance_remark
+        FROM
+        out_rent ou
+        LEFT JOIN build b ON b.build_id = ou.build_id
+        LEFT JOIN unit u ON u.unit_id = ou.rent_unit
+        <where>
+            <if test="OutRentVo.buildId !=null">
+                and ou.build_id = #{OutRentVo.buildId}
+            </if>
+            <if test="OutRentVo.startTime !=null">
+                and ou.start_time &gt;= #{OutRentVo.startTime}
+            </if>
+            <if test="OutRentVo.endTime !=null">
+                and ou.end_time &lt;= #{OutRentVo.endTime}
+            </if>
+        </where>
+    </select>
+
+
+</mapper>

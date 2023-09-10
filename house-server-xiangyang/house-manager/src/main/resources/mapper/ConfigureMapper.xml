@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.ConfigureMapper">
+
+    <!--查询总面积-->
+    <select id="selectTotalArea" resultType="java.lang.Float">
+        SELECT
+        SUM(h.house_use_area)
+        FROM
+        unit u
+        LEFT JOIN build b ON u.unit_id = b.property_unit_id
+        LEFT JOIN house h ON b.build_id = h.build_id
+        <where>
+            <if test="unitId != null">
+                and u.unit_id = #{unitId}
+            </if>
+        </where>
+    </select>
+
+    <!--配置申请列表-->
+    <select id="configureList" resultType="com.ryzw.housemanager.dto.ConfigureDto">
+        SELECT
+        SUM(h.house_use_area) as totalArea,
+        u.unit_complement,
+        con.configure_no,
+        apply_status,
+        configure_applicant,
+        allocation_plan,
+        configure_id,
+        con.unit_name,
+        configure_date,
+        step,
+        process_instance_id,
+        task_id
+        FROM
+        configure con
+        LEFT JOIN unit u ON u.unit_id = con.unit_id
+        LEFT JOIN build b ON u.unit_id = b.property_unit_id
+        LEFT JOIN house h ON b.build_id = h.build_id
+        <where>
+            <if test="configureVo.configureNo!= null and configureVo.configureNo != ''">
+                and con.configure_no like concat('%',#{configureVo.configureNo},'%')
+            </if>
+            <if test="configureVo.unitId != null">
+                and con.unit_id = #{configureVo.unitId}
+            </if>
+            <if test="configureVo.startTime != null">
+                and configure_date &gt; #{configureVo.startTime}
+            </if>
+            <if test="configureVo.endTime != null">
+                and configure_date &lt; #{configureVo.endTime}
+            </if>
+            <if test="configureVo.configureIdList != null and configureVo.configureIdList.size() >0">
+                and configure_id in
+                <foreach collection="configureVo.configureIdList" item="item" index="index" separator="," open="("
+                         close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="configureVo.userId != null">
+                and configure_applicant_id = #{configureVo.userId}
+            </if>
+        </where>
+        GROUP BY configure_id
+        order by configure_id desc
+    </select>
+
+    <!--查询机关管理局审查数据-->
+    <select id="selectData" resultType="java.lang.String">
+        SELECT
+        u.unit_name
+        FROM
+        configure con
+        LEFT JOIN unit u ON u.unit_id = con.redistribution_unit_id
+        <where>
+            <if test="id != null">
+                and con.configure_id = #{id}
+            </if>
+        </where>
+    </select>
+
+    <resultMap id="selectConPlanDataMap" type="com.ryzw.housemanager.dto.ConPlanDataDto">
+        <id column="configure_id" property="configureId"/>
+        <collection property="planDataDtoList" ofType="com.ryzw.housemanager.dto.PlanDataDto">
+            <id column="configure_plan_data_id" property="configurePlandataid"/>
+            <result column="yard_name" property="yardName"/>
+            <result column="build_name" property="buildName"/>
+            <result column="house_number" property="houseNumber"/>
+            <result column="house_use_area" property="houseUseArea"/>
+            <collection property="oldUnitNameList" column="configure_plan_data_id" ofType="java.lang.String" select="selectUnit">
+                <result column="unit_name" property="oldUnitNameList"/>
+            </collection>
+        </collection>
+    </resultMap>
+
+    <select id="selectUnit"  resultType="java.lang.String">
+        SELECT DISTINCT
+            u.unit_name
+        FROM
+            configure_plan_old_unit ou
+            LEFT JOIN unit u ON u.unit_id = ou.unit_id
+            where
+            u.unit_name IS NOT NULL
+	        AND ou.configure_plan_data_id = #{configure_plan_data_id}
+    </select>
+
+    <!--查看分配方案数据-->
+    <select id="selectPlanData" resultMap="selectConPlanDataMap">
+        SELECT DISTINCT
+            con.configure_id,
+            cpd.configure_plan_data_id,
+            y.yard_name,
+            b.build_name,
+            h.house_number,
+            h.house_use_area
+        FROM
+            configure con
+            LEFT JOIN configure_plan_data cpd ON cpd.configure_id = con.configure_id
+            LEFT JOIN yard y ON y.yard_id = cpd.yard_id
+            LEFT JOIN build b ON b.build_id = cpd.build_id
+            LEFT JOIN house_history h ON h.house_id = cpd.house_id
+            LEFT JOIN configure_plan_old_unit ou ON ou.configure_plan_data_id = cpd.configure_plan_data_id
+            LEFT JOIN unit u ON u.unit_id = ou.unit_id
+        <where>
+            cpd.plan_type = 1
+            <if test="planDataVo.configureId != null">
+                and con.configure_id = #{planDataVo.configureId}
+            </if>
+        </where>
+        order by con.configure_id asc
+    </select>
+
+    <!--查询区域集合-->
+    <select id="selectRegionList" resultType="java.lang.String">
+        SELECT
+        r.region_name
+        FROM
+        configure con
+        LEFT JOIN configure_region cr ON cr.configure_id = con.configure_id
+        LEFT JOIN region r ON r.region_id = cr.region_id
+        <where>
+            <if test="id != null">
+                and con.configure_id = #{id}
+            </if>
+        </where>
+    </select>
+
+    <!--查询某个用户所有审批配置记录-->
+    <select id="selectConfigureRecord" resultType="com.ryzw.housemanager.dto.ConfigureDto">
+        SELECT
+        SUM(h.house_use_area) as totalArea,
+        u.unit_complement,
+        apply_status,
+        configure_applicant,
+        configure_id,
+        con.unit_name,
+        configure_date
+        FROM
+        configure con
+        LEFT JOIN unit u ON u.unit_id = con.unit_id
+        LEFT JOIN build b ON u.unit_id = b.property_unit_id
+        LEFT JOIN house h ON b.build_id = h.build_id
+        <where>
+            <if test="congigureIdList != null and congigureIdList.size() >0">
+                and
+                configure_id in
+                <foreach collection="congigureIdList" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY configure_id
+    </select>
+
+    <!--查看分配方案数据(人工)-->
+    <select id="planData" resultType="java.lang.String">
+        SELECT
+        p.plan_name
+        FROM
+        configure con
+        LEFT JOIN plan p ON p.plan_id = con.plan_id
+        <where>
+            <if test="configureId != null">
+                and con.configure_id = #{configureId}
+            </if>
+        </where>
+    </select>
+
+
+    <!--查询配置工作统计-->
+    <select id="configureStatistics" resultType="com.ryzw.housemanager.dto.ConfigureStatisticsDto">
+        SELECT
+        COUNT(configure_id) as approvalNum
+        FROM
+        configure
+        <where>
+            <if test="workStatisticsVo.step != null">
+                and allocation_plan = #{workStatisticsVo.step}
+            </if>
+            <if test="workStatisticsVo.applyDateMonth!=null">
+                AND date_format(configure_date,'%Y-%m')= #{workStatisticsVo.applyDateMonth}
+            </if>
+            <if test="workStatisticsVo.applyDateYear!=null">
+                AND date_format(configure_date,'%Y')= #{workStatisticsVo.applyDateYear}
+            </if>
+            <if test="workStatisticsVo.unitIdList!=null and workStatisticsVo.unitIdList.size()>0">
+                AND unit_id in
+                <foreach collection="workStatisticsVo.unitIdList" item="item" index="index" separator="," open="("
+                         close=")">
+                    #{item}
+                </foreach>
+            </if>
+            AND apply_status = 1
+        </where>
+    </select>
+
+    <!--查询配置Id集合-->
+    <select id="configureIdList" resultType="java.lang.Long">
+        SELECT
+        configure_id
+        FROM
+        configure
+        <where>
+            <if test="workStatisticsVo.step != null">
+                and allocation_plan = #{workStatisticsVo.step}
+            </if>
+            <if test="workStatisticsVo.applyDateMonth!=null">
+                AND date_format(configure_date,'%Y-%m')= #{workStatisticsVo.applyDateMonth}
+            </if>
+            <if test="workStatisticsVo.applyDateYear!=null">
+                AND date_format(configure_date,'%Y')= #{workStatisticsVo.applyDateYear}
+            </if>
+            <if test="workStatisticsVo.unitIdList!=null and workStatisticsVo.unitIdList.size()>0">
+                AND unit_id in
+                <foreach collection="workStatisticsVo.unitIdList" item="item" index="index" separator="," open="("
+                         close=")">
+                    #{item}
+                </foreach>
+            </if>
+            AND apply_status = 1
+        </where>
+    </select>
+
+    <!--查询配置工作统计日期范围-->
+    <select id="statisticsDateRange" resultType="com.ryzw.housemanager.dto.DateRangeDto">
+        SELECT
+        date_format(MAX(configure_date),'%Y') as maxYear,
+        date_format(MIN(configure_date),'%Y') as minYear,
+        date_format(MAX(configure_date),'%Y-%m') as maxMonth,
+        date_format(MIN(configure_date),'%Y-%m') as minMonth
+        FROM
+        configure
+        <where>
+            <if test="unitIds !=null and unitIds.size()>0">
+                and unit_id IN
+                <foreach collection="unitIds" item="item" index="index" separator="," open="("
+                         close=")">
+                    #{item}
+                </foreach>
+            </if>
+            and apply_status = 1
+        </where>
+    </select>
+
+    <!--显示相关联的配置申请-->
+    <select id="configureListByHouseIdOrFloor" resultType="com.ryzw.housemanager.entity.Configure">
+        SELECT DISTINCT
+        con.configure_applicant,
+        con.configure_no,
+        con.configure_date,
+        con.contacts,
+        con.contact_phone,
+        con.unit_name
+        FROM
+        configure_plan_data cpd
+        LEFT JOIN configure con ON con.configure_id = cpd.configure_id
+        <where>
+            <if test="houseListVo.houseIdList!=null and houseListVo.houseIdList.size()>0">
+                and cpd.house_id IN
+                <foreach collection="houseListVo.houseIdList" item="item" index="index" separator="," open="("
+                         close=")">
+                    #{item}
+                </foreach>
+            </if>
+            and con.apply_status = 3
+        </where>
+    </select>
+
+    <!--获取相关联的配置申请Id集合-->
+    <select id="selectConfigureIdList" resultType="java.lang.Long">
+        SELECT DISTINCT
+        con.configure_id
+        FROM
+        configure_plan_data cpd
+        LEFT JOIN configure con ON con.configure_id = cpd.configure_id
+        <where>
+            <if test="houseListVo.houseIdList!=null and houseListVo.houseIdList.size()>0">
+                and cpd.house_id IN
+                <foreach collection="houseListVo.houseIdList" item="item" index="index" separator="," open="("
+                         close=")">
+                    #{item}
+                </foreach>
+            </if>
+            and con.apply_status = 3
+        </where>
+        order by con.configure_id desc
+    </select>
+
+    <!--获取调剂面积-->
+    <select id="getTjArea" resultType="java.math.BigDecimal">
+        SELECT IFNULL(sum(house_use_area),0) FROM house h RIGHT JOIN(
+        SELECT DISTINCT
+        cpd.house_id
+        FROM
+        configure con
+        LEFT JOIN configure_plan_data cpd ON con.configure_id = cpd.configure_id
+        <where>
+            <if test="workStatisticsVo.applyDateMonth!=null">
+                AND date_format(con.configure_date,'%Y-%m')= #{workStatisticsVo.applyDateMonth}
+            </if>
+            <if test="workStatisticsVo.applyDateYear!=null">
+                AND date_format(con.configure_date,'%Y')= #{workStatisticsVo.applyDateYear}
+            </if>
+            <if test="workStatisticsVo.unitIdList!=null and workStatisticsVo.unitIdList.size()>0">
+                AND con.unit_id in
+                <foreach collection="workStatisticsVo.unitIdList" item="item" index="index" separator="," open="("
+                         close=")">
+                    #{item}
+                </foreach>
+            </if>
+            AND con.allocation_plan = 1
+            AND con.apply_status = 1
+        </where>
+        ) t on t.house_id = h.house_id
+
+    </select>
+
+</mapper>

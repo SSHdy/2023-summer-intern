@@ -1,0 +1,543 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.YardMapper">
+
+    <resultMap id="yardAllResult" type="com.ryzw.housemanager.vo.YardResultVo">
+        <id column="yard_id" property="yardId"></id>
+        <result column="yard_name" property="yardName"></result>
+        <result column="build_count" property="buildCount"></result>
+        <result column="unit_id" property="unitId"></result>
+    </resultMap>
+
+    <resultMap id="unitYard" type="com.ryzw.housemanager.dto.UnitYardDto">
+        <id column="yard_id" property="yardId"></id>
+        <result column="yard_name" property="yardName"></result>
+        <result column="unit_id" property="unitId"></result>
+    </resultMap>
+
+    <resultMap id="yardBuildResult" type="com.ryzw.housemanager.dto.YardBuildDto">
+        <id column="yard_id" property="yardId"></id>
+        <result column="yard_name" property="yardName"></result>
+        <result column="yard_longitude" property="yardLongitude"/>
+        <result column="yard_latitude" property="yardLatitude"/>
+        <collection property="buildList" ofType="com.ryzw.housemanager.entity.Build">
+            <id column="build_id" property="buildId"></id>
+            <result column="build_name" property="buildName"></result>
+            <result column="build_latitude" property="buildLatitude"></result>
+            <result column="build_longitude" property="buildLongitude"></result>
+        </collection>
+    </resultMap>
+
+
+    <!--查找单位集合下的所有院落-->
+    <select id="getAllByUnitID" resultMap="yardAllResult">
+        SELECT
+        y.yard_id,
+        y.yard_name,
+        u.unit_id,
+        count(hu.build_id) AS build_count
+        FROM housingUse hu
+        left join use_unit u on hu.housingUse_id = u.housingUse_id
+        left join
+        yard y
+        on hu.yard_id = y.yard_id
+        <where>
+            and y.type = 1
+            <if test="searchYardId != null">
+                and y.yard_id = #{searchYardId}
+            </if>
+            <if test="unitIds != null and unitIds.size() >0">
+                and u.unit_id in
+                <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+        y.yard_id,u.unit_id
+        ORDER BY
+        y.yard_id
+    </select>
+
+    <!--  查询人工分房的院落信息  -->
+    <select id="getYardHandle" resultMap="yardAllResult">
+        SELECT
+        y.yard_id,
+        y.yard_name,
+        u.unit_id,
+        count(hu.build_id) AS build_count
+        FROM housingUse hu
+        left join use_unit u on hu.housingUse_id = u.housingUse_id
+        left join
+        yard y
+        on hu.yard_id = y.yard_id
+        <where>
+            and y.type = 1
+            or hu.is_use = 0
+            <if test="searchYardId != null">
+                and y.yard_id = #{searchYardId}
+            </if>
+            <if test="unitIds != null and unitIds.size() >0">
+                and u.unit_id in
+                <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+        y.yard_id,u.unit_id
+        ORDER BY
+        y.yard_id
+    </select>
+
+
+    <!--查找单位集合下的所有院落-->
+    <select id="getYardByUnitID" resultMap="yardAllResult">
+        SELECT
+        y.yard_id,
+        y.yard_name,
+        count(hu.build_id) AS build_count, u.unit_id
+        FROM housingUse hu
+        left join use_unit u on hu.housingUse_id = u.housingUse_id
+        left join
+        yard y
+        on hu.yard_id = y.yard_id
+        <where>
+            <if test="unitIds != null and unitIds.size() >0">
+                and u.unit_id in
+                <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+        GROUP BY
+        y.yard_id,u.unit_id
+        ORDER BY
+        y.yard_id
+    </select>
+
+
+    <select id="getAll" resultMap="yardAllResult">
+        SELECT
+        y.yard_id,
+        y.yard_name,
+        count(b.build_id) AS build_count
+        FROM
+        yard y
+        LEFT JOIN build b ON y.yard_id = b.yard_id
+        left join house h on b.build_id = h.build_id
+        left join use_relationship u on u.house_id = h.house_id
+        <where>
+            <if test="searchId != null">
+                and y.yard_id = #{searchId}
+            </if>
+            and y.type=1
+            <choose>
+                <when test="unitIds != null and unitIds.size() > 0">
+                    and (
+                    b.property_unit_id in
+                    <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and (
+                    b.property_unit_id = 0
+                </otherwise>
+            </choose>
+            <choose>
+                <when test="unitIds != null and unitIds.size() > 0">
+                    or
+                    u.unit_id in
+                    <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                    )
+                </when>
+                <otherwise>
+                    or
+                    u.unit_id = 0 )
+                </otherwise>
+            </choose>
+
+        </where>
+        GROUP BY
+        y.yard_id,
+        y.yard_name
+        ORDER BY
+        y.yard_id
+    </select>
+
+
+    <select id="unitYard" resultMap="unitYard">
+        SELECT
+        y.yard_id,
+        y.yard_name,
+        ut.unit_id
+        FROM
+        yard y
+        LEFT JOIN housingUse h ON y.yard_id = h.yard_id
+        left join use_unit ut on h.housingUse_id = ut.housingUse_id
+        <where>
+            <if test="Uy.unitId != null and Uy.unitId != ''">
+                and ut.unit_id = #{Uy.unitId}
+            </if>
+        </where>
+    </select>
+
+    <select id="findInfoById" resultType="com.ryzw.housemanager.dto.YardRegionDto" parameterType="int">
+        SELECT
+        y.yard_id,
+        y.yard_name,
+        r.region_name,
+        y.yard_position,
+        y.yard_latitude,
+        y.yard_longitude,
+        y.region_id,
+        y.type
+        FROM
+        yard y
+        LEFT JOIN region r ON y.region_id = r.region_id
+        <where>
+            <if test="Ya.yardId != null and Ya.yardId != ''">
+                and y.yard_id = #{Ya.yardId}
+            </if>
+            <if test="Ya.type != null">
+                and y.type = #{Ya.type}
+            </if>
+        </where>
+        order by y.yard_id desc
+    </select>
+
+    <select id="yardBuilds" resultMap="yardBuildResult">
+        SELECT
+        y.yard_id,
+        y.yard_name,
+        y.yard_latitude,
+        y.yard_longitude,
+        b.build_id,
+        b.build_name,
+        b.build_latitude,
+        b.build_longitude
+        FROM
+        yard y
+        LEFT JOIN build b ON y.yard_id = b.yard_id
+        <where>
+            <if test="Ba.id!= null and Ba.id != ''">
+                y.yard_id = #{Ba.id}
+            </if>
+
+        </where>
+    </select>
+
+    <!--查找单位集合下的所有院落-->
+    <select id="yardPosition" resultType="com.ryzw.housemanager.dto.YardPositionDto">
+        SELECT distinct
+        y.yard_id,
+        y.yard_name,
+        y.yard_latitude,
+        y.yard_longitude
+        FROM
+        housingUse hu
+        left join use_unit u on hu.housingUse_id = u.housingUse_id
+        LEFT JOIN yard y ON hu.yard_id = y.yard_id
+        WHERE
+        u.unit_id IN
+        <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+        GROUP BY
+        y.yard_id
+        ORDER BY
+        y.yard_id
+    </select>
+
+    <resultMap id="selectEstateMap" type="com.ryzw.housemanager.dto.YardEstateDto">
+        <id column="yard_id" property="yardId"></id>
+        <collection property="yardAndestateVoList" ofType="com.ryzw.housemanager.vo.YardAndestateVo">
+            <id column="estate_id" property="estateId"></id>
+            <result column="yard_estate_id" property="yardEstateId"/>
+            <result column="estate_name" property="estateName"/>
+            <result column="start_time" property="startTime"></result>
+            <result column="end_time" property="endTime"/>
+            <result column="contract_amount" property="contractAmount"/>
+            <result column="money_from" property="moneyFrom"/>
+            <collection property="serviceContentList" ofType="java.lang.Long">
+                <id column="service_content" property="serviceContentList"></id>
+            </collection>
+        </collection>
+    </resultMap>
+
+    <!--根据院落编号查询物业关系-->
+    <select id="selectEstate" resultMap="selectEstateMap">
+        SELECT
+        ye.yard_estate_id,
+        ye.yard_id,
+        ye.estate_id,
+        ye.start_time,
+        ye.end_time,
+        ye.contract_amount,
+        ye.money_from,
+        sc.service_content,
+        e.estate_name
+        FROM
+        yard_estate ye
+        LEFT JOIN yard y ON y.yard_id = ye.yard_id
+        LEFT JOIN service_content sc ON sc.yard_estate_id = ye.yard_estate_id
+        LEFT JOIN estate e ON e.estate_id = ye.estate_id
+        <where>
+            <if test="yardId!= null">
+                and ye.yard_id = #{yardId}
+            </if>
+
+        </where>
+    </select>
+
+    <resultMap id="yardDetail" type="com.ryzw.housemanager.dto.YardDetailDto">
+        <id column="yard_id" property="yardId"></id>
+        <result column="yard_name" property="yardName"/>
+        <result column="yard_position" property="yardPosition"/>
+        <result column="yard_longitude" property="yardLongitude"></result>
+        <result column="yard_latitude" property="yardLatitude"/>
+        <result column="type" property="type"/>
+        <result column="region_name" property="yardAdministrativeRegion"/>
+    </resultMap>
+
+    <select id="yardDetail" resultMap="yardDetail">
+        SELECT
+        y.yard_id,
+        y.yard_name,
+        y.yard_position,
+        y.yard_longitude,
+        y.yard_latitude,
+        y.yard_administrative_region,
+        y.type,
+        r.region_name
+        FROM
+        yard AS y
+        LEFT JOIN region AS r ON y.region_id = r.region_id
+        <where>
+            <if test="id.id != null">
+                y.yard_id = #{id.id}
+            </if>
+        </where>
+    </select>
+
+    <!--判断院落/土地下是否有出租出借-->
+    <select id="isHaveRent" resultType="java.lang.Integer">
+        SELECT
+        count(hu.housingUse_id)
+        FROM
+        rent_relationship rr
+        LEFT JOIN housingUse hu ON hu.housingUse_id = rr.housingUse_id
+        <where>
+            <if test="yardId != null">
+                hu.yard_id = #{yardId}
+            </if>
+            AND hu.is_use = 1
+        </where>
+    </select>
+
+    <!--  市（州、盟）办公用房信息报表查询第一块  -->
+    <select id="yardOne" resultType="com.ryzw.housemanager.dto.YardOneDto">
+        SELECT t.yard_id,t.yard_name,t.yard_position,t.region_name,sum(t.totalCoveredArea) as totalCoveredArea,sum(t.siteArea ) as siteArea from(
+        SELECT
+        y.yard_id,
+        y.yard_name,
+        y.yard_position,
+        b.build_id,
+        r.region_name,
+        IFNULL(b.build_area,0) as totalCoveredArea,
+        IFNULL(b.covered_area,0)as siteArea
+        FROM
+        yard y
+        LEFT JOIN ( SELECT max( housingUse_id ) AS housingUse_id, house_id, yard_id, build_id FROM housingUse hu GROUP BY house_id, yard_id, build_id ) hu ON y.yard_id = hu.yard_id
+        LEFT JOIN ( SELECT max( housingUse_id ) AS housingUse_id, unit_id FROM use_unit GROUP BY housingUse_id, unit_id ) uu ON uu.housingUse_id = hu.housingUse_id
+        LEFT JOIN build b ON hu.build_id = b.build_id
+        LEFT JOIN region r ON r.region_id = y.region_id
+        <where>
+            y.type = 1
+            <choose>
+                <when test="unitIds != null and unitIds.size() >0">
+                    and uu.unit_id in
+                    <foreach item="item" collection="unitIds" index="index" open="(" separator="," close=")">
+                        #{item}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and uu.unit_id = 0
+                </otherwise>
+            </choose>
+        </where>
+        GROUP BY
+        y.yard_id,build_id
+        ORDER BY
+        y.yard_id) t GROUP BY t.yard_id
+    </select>
+
+    <!--市（州、盟）房屋类型报表查询第二块-->
+    <select id="yardTypeTwo" resultType="com.ryzw.housemanager.dto.YardTypeTwoDto">
+        SELECT
+             x.yard_id,
+            ht.houseType_id,
+            ht.houseType_name,
+        IF
+            ( SUM( x.house_build_area ), SUM( x.house_build_area ), 0 ) AS totalBuildArea,
+        IF
+            ( SUM( x.house_use_area ), SUM( x.house_use_area ), 0 ) AS totalUseArea
+        FROM
+            houseType ht
+            LEFT JOIN (
+            SELECT
+              y.yard_id,
+                h.house_id,
+                h.house_build_area,
+                h.house_use_area,
+                h.houseType_id
+            FROM
+                house h
+                LEFT JOIN (SELECT max(housingUse_id) as housingUse_id, house_id,yard_id,build_id from housingUse hu GROUP BY house_id,yard_id,build_id) hu on h.house_id = hu.house_id
+                LEFT JOIN (SELECT max(housingUse_id) as housingUse_id ,unit_id from use_unit GROUP BY housingUse_id,unit_id) uu on uu.housingUse_id = hu.housingUse_id
+                LEFT JOIN build b ON hu.build_id = b.build_id
+                LEFT JOIN yard y ON hu.yard_id = y.yard_id
+                <where>
+                    y.type = 1
+                    <choose>
+                        <when test="unitIds != null and unitIds.size() >0">
+                            and uu.unit_id in
+                            <foreach item="item" collection="unitIds" index="index" open="(" separator="," close=")">
+                                #{item}
+                            </foreach>
+                        </when>
+                        <otherwise>
+                            and uu.unit_id = 0
+                        </otherwise>
+                    </choose>
+                </where>
+            ) x ON ht.houseType_id = x.houseType_id
+            	where x.yard_id is not null
+        GROUP BY
+        x.yard_id,
+            ht.houseType_id,
+            ht.houseType_name
+        ORDER BY
+            ht.houseType_id asc
+    </select>
+
+    <!--  查询院落的权属和建设情况  -->
+    <select id="yardThree" resultType="com.ryzw.housemanager.dto.YardThreeDto">
+        SELECT
+        yard_id,build_id,
+        warrant_remark AS registration,
+        build_contract AS isRent,
+        build_remark AS remark
+    FROM
+        build
+    </select>
+
+
+    <!--  查询院落楼座建成时间  -->
+    <select id="selectYardBuildDate" resultType="com.ryzw.housemanager.dto.YardBuildDateDto">
+SELECT
+	b.yard_id,
+    b.build_id,
+    b.build_date,
+	b.warrant_remark AS registration,
+    b.build_contract AS isRent,
+    b.build_remark AS remark
+FROM
+	build b
+    LEFT JOIN (SELECT max(housingUse_id) as housingUse_id, house_id,build_id from housingUse hu GROUP BY house_id,build_id) hu on b.build_id = hu.build_id
+    LEFT JOIN (SELECT max(housingUse_id) as housingUse_id ,unit_id from use_unit GROUP BY housingUse_id,unit_id) uu on uu.housingUse_id = hu.housingUse_id
+	<where>
+        <choose>
+            <when test="unitIds != null and unitIds.size() >0">
+                and uu.unit_id in
+                <foreach item="item" collection="unitIds" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </when>
+            <otherwise>
+                and uu.unit_id = 0
+            </otherwise>
+        </choose>
+    </where>
+        GROUP BY
+        b.build_id
+    </select>
+
+
+    <select id="unitList" resultType="com.ryzw.housemanager.dto.YardUnitDto">
+        SELECT  y.yard_id,
+			u.unit_id,
+			u.unit_name,
+			u.unit_category,
+			p.professional_id,
+			p.professional_name,
+			count(lo.leadingOffice_id) as personNum
+        FROM
+				leadingOffice lo
+				LEFT JOIN housingUse hu ON hu.house_id = lo.house_id
+			     LEFT JOIN use_relationship ur ON  ur.house_id =lo.house_id and lo.professional_id = ur.professional_id
+			LEFT JOIN unit u ON u.unit_id = ur.unit_id
+				 LEFT JOIN yard y ON y.yard_id = hu.yard_id
+         left join   professional p on p.professional_id= lo.professional_id
+		<where>
+            hu.is_use = 1 and y.type = 1
+            <choose>
+                <when test="unitIds != null and unitIds.size() >0">
+                    and u.unit_id in
+                    <foreach item="item" collection="unitIds" index="index" open="(" separator="," close=")">
+                        #{item}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and u.unit_id = 0
+                </otherwise>
+            </choose>
+        </where>
+		   GROUP BY
+        y.yard_id,
+        u.unit_id,
+		p.professional_id
+    </select>
+
+
+    <select id="unitRankList" resultType="com.ryzw.housemanager.dto.YardUnitDto">
+          SELECT
+            y.yard_id,
+            u.unit_id,
+            u.unit_name,
+            u.unit_category,
+            p.professional_id,
+            p.professional_name,
+            up.professional_num AS personNum
+    FROM
+        housingUse hu
+        LEFT JOIN use_unit uu ON hu.housingUse_id = uu.housingUse_id
+        LEFT JOIN unit u ON u.unit_id = uu.unit_id
+        LEFT JOIN yard y ON y.yard_id = hu.yard_id
+        LEFT JOIN unit_professional up ON up.unit_id = uu.unit_id
+        LEFT JOIN professional p ON p.professional_id = up.professional_id
+    <where>
+        hu.is_use = 1 AND y.type = 1
+        <choose>
+            <when test="unitIds != null and unitIds.size() >0">
+                and u.unit_id in
+                <foreach item="item" collection="unitIds" index="index" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </when>
+            <otherwise>
+                and u.unit_id = 0
+            </otherwise>
+        </choose>
+    </where>
+    GROUP BY
+        y.yard_id,
+        u.unit_id,
+        p.professional_id,
+        up.unit_professional_id
+    </select>
+
+</mapper>

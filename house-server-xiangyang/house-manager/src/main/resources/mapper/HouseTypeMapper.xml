@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.HouseTypeMapper">
+
+    <!--房屋类型报表查询-->
+    <select id="serviceHouseReport" resultType="com.ryzw.housemanager.dto.TypeReportDto">
+        SELECT
+        b.build_name,
+        h.use_type,
+        h.house_number,
+        h.house_use_area
+        FROM
+        house h
+        LEFT JOIN houseType ht ON h.houseType_id = ht.houseType_id
+        LEFT JOIN build b ON b.build_id = h.build_id
+        <where>
+            <if test=" type.housetypeId != null ">
+                and ht.houseType_id = #{type.housetypeId}
+            </if>
+            <if test=" type.buildId != null ">
+                and b.build_id = #{type.buildId}
+            </if>
+        </where>
+    </select>
+
+    <!--房屋类型报表查询-->
+    <select id="houseTypeReport" resultType="com.ryzw.housemanager.dto.HouseTypeReportDto">
+        SELECT
+        ht.houseType_name,
+        count(x.house_id) as houseNum,
+        IF
+        ( SUM( x.house_build_area ), SUM(x.house_build_area ), 0 ) AS totalBuildArea,
+        IF
+        ( SUM( x.house_use_area ), SUM(x.house_use_area ), 0 ) AS totalUseArea
+        FROM
+        houseType ht
+        LEFT JOIN
+        (select h.house_id,h.house_build_area,h.house_use_area,h.houseType_id
+        from house h
+        left join build b ON h.build_id = b.build_id
+        <where>
+            <choose>
+                <when test="unitIds != null and unitIds.size() > 0">
+                    and
+                    b.property_unit_id in
+                    <foreach collection="unitIds" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and
+                    b.property_unit_id = 0
+                </otherwise>
+            </choose>
+        </where>
+        ) x on ht.houseType_id = x.houseType_id
+        GROUP BY
+        ht.houseType_id,
+        ht.houseType_name
+        ORDER BY
+        ht.houseType_id DESC
+    </select>
+
+    <!--房屋类型报表查询-->
+    <select id="areaByType" resultType="com.ryzw.housemanager.dto.CommonHouseTypeDto">
+        SELECT
+        b.build_id,
+        sum( h.house_use_area ) as houseUseAreaSum,
+        count(h.house_id) as houseNum
+        FROM
+        house h
+        LEFT JOIN build b ON h.build_id = b.build_id
+        LEFT JOIN (SELECT max(housingUse_id) as housingUse_id, house_id from housingUse hu GROUP BY house_id) hu on h.house_id = hu.house_id
+        LEFT JOIN (SELECT max(housingUse_id) as housingUse_id ,unit_id from use_unit GROUP BY housingUse_id,unit_id) uu on uu.housingUse_id = hu.housingUse_id
+        <where>
+            h.houseType_id = #{type}
+            <choose>
+                <when test="unitIdList != null and unitIdList.size() > 0">
+                    and
+                    uu.unit_id in
+                    <foreach collection="unitIdList" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and
+                    uu.unit_id = 0
+                </otherwise>
+            </choose>
+            <if test="buildId != null">
+                AND b.build_id = #{buildId}
+            </if>
+            and b.build_id is not null
+        </where>
+        GROUP BY
+        b.build_id
+    </select>
+
+    <select id="areaByTypeAndYard" resultType="com.ryzw.housemanager.dto.CommonHouseTypeDto">
+        SELECT
+        b.build_id,
+        sum( h.house_use_area ) as houseUseAreaSum
+        FROM
+        house h
+        LEFT JOIN (SELECT max(housingUse_id) as housingUse_id, house_id,yard_id,build_id from housingUse hu GROUP BY house_id,yard_id,build_id) hu on h.house_id = hu.house_id
+        LEFT JOIN (SELECT max(housingUse_id) as housingUse_id ,unit_id from use_unit GROUP BY housingUse_id,unit_id) uu on uu.housingUse_id = hu.housingUse_id
+        LEFT JOIN build b ON hu.build_id = b.build_id
+        LEFT JOIN yard y ON hu.yard_id = y.yard_id
+        <where>
+            h.houseType_id = #{type}
+            and b.yard_id = #{yardId}
+            <choose>
+                <when test="unitIdList != null and unitIdList.size() > 0">
+                    and
+                    uu.unit_id in
+                    <foreach collection="unitIdList" item="item" index="index" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </when>
+                <otherwise>
+                    and
+                    uu.unit_id = 0
+                </otherwise>
+            </choose>
+        </where>
+        GROUP BY
+        b.build_id
+    </select>
+
+
+    <!--  单位树房间信息  -->
+    <select id="unitDetail1" resultType="com.ryzw.housemanager.dto.HouseTypeReportDto">
+        SELECT
+        ht.houseType_name,
+        SUM( ur.room_num ) AS headcount,
+        COUNT( h.house_id ) AS houseNum,
+        SUM( h.house_use_area ) AS totalUseArea
+        FROM
+        unit u
+        LEFT JOIN ( SELECT DISTINCT house_id, unit_id, SUM( room_num ) AS room_num FROM use_relationship WHERE unit_id =
+        #{Id.id} GROUP BY house_id ) AS ur ON u.unit_id = ur.unit_id
+        LEFT JOIN house h ON h.house_id = ur.house_id
+        LEFT JOIN houseType ht ON h.houseType_id = ht.houseType_id
+        <where>
+            <if test="Id.id != null">
+                and u.unit_id = #{Id.id}
+            </if>
+        </where>
+        GROUP BY
+        ht.houseType_id,
+        ht.houseType_name
+        ORDER BY
+        ht.houseType_id DESC
+
+    </select>
+
+    <resultMap id="houseTypeReportMap" type="com.ryzw.housemanager.dto.HouseTypeReportDto">
+        <id column="unit_complement" property="unitComplement"/>
+        <collection property="houseTypeSumDtoList" ofType="com.ryzw.housemanager.dto.HouseTypeSumDto">
+            <id column="houseType_name" property="houseTypeName"></id>
+            <result column="houseNum" property="houseNum"></result>
+            <result column="totalBuildArea" property="totalBuildArea"></result>
+            <result column="totalUseArea" property="totalUseArea"></result>
+        </collection>
+    </resultMap>
+
+    <!--  单位树房间信息  -->
+    <select id="unitDetail" resultMap="houseTypeReportMap">
+        SELECT
+        u.unit_complement,
+        sum(ur.room_num) as headcount,
+        count(h.house_number) as houseNum,
+        ht.houseType_name,
+        ht.houseType_id,
+        sum(h.house_use_area) as totalUseArea
+        FROM
+        housingUse hu
+        INNER JOIN (SELECT max(hu1.housingUse_id) as housingUse_id,hu1.house_id FROM housingUse hu1 GROUP BY hu1.house_id) hu2 on hu2.housingUse_id = hu.housingUse_id
+        LEFT JOIN use_unit uu on uu.housingUse_id = hu2.housingUse_id
+        LEFT JOIN house h on h.house_id = hu2.house_id
+        LEFT JOIN houseType ht on ht.houseType_id = h.houseType_id
+        LEFT JOIN (SELECT DISTINCT house_id, SUM( room_num ) AS room_num FROM use_relationship GROUP BY house_id) AS ur ON ur.house_id = h.house_id
+        LEFT JOIN unit u on u.unit_id = uu.unit_id
+        <where>
+            <if test="Id.id != null">
+                and uu.unit_id = #{Id.id}
+            </if>
+            and ht.houseType_name is not null
+        </where>
+        GROUP BY ht.houseType_name, ht.houseType_id
+        ORDER BY ht.houseType_id
+    </select>
+
+
+    <!--  查询各楼栋的系数  -->
+    <select id="selectBuildCoe" resultType="com.ryzw.housemanager.dto.BuildCoeDto">
+        SELECT
+            b.build_id,
+            ROUND(IFNULL(SUM( h.house_use_area ),0) / (
+            b.build_area - (
+        SELECT
+            IFNULL(SUM( h1.house_use_area ),0)
+        FROM
+            house h1
+            LEFT JOIN build b1 ON b1.build_id = h1.build_id
+        WHERE
+            h1.houseType_id = 4
+            AND b1.build_id = b.build_id
+            )
+            ) ,2) as buildCoe
+        FROM
+            house h
+            LEFT JOIN build b ON b.build_id = h.build_id
+        WHERE
+            b.build_id IS NOT NULL and h.houseType_id != 4
+        GROUP BY
+            b.build_id
+    </select>
+
+    <!--  查询单个楼栋的系数  -->
+    <select id="selectOneBuildCoe" resultType="com.ryzw.housemanager.dto.BuildCoeDto">
+        SELECT
+            b.build_id,
+            ROUND(IFNULL(SUM( h.house_use_area ),0) / (
+            b.build_area - (
+        SELECT
+            IFNULL(SUM( h1.house_use_area ),0)
+        FROM
+            house h1
+            LEFT JOIN build b1 ON b1.build_id = h1.build_id
+        WHERE
+            h1.houseType_id = 4
+            AND b1.build_id = b.build_id
+            )
+            ) ,2) as buildCoe
+        FROM
+            house h
+            LEFT JOIN build b ON b.build_id = h.build_id
+        WHERE
+            b.build_id = #{buildId} and h.houseType_id != 4
+    </select>
+
+</mapper>

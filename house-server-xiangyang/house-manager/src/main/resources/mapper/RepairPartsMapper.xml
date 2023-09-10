@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.RepairPartsMapper">
+
+    <!--计算维修申请使用的维修部位数量-->
+    <select id="selectApplyParts" resultType="java.lang.Integer">
+        SELECT
+        COUNT( rm.repair_part_id ) AS num
+        FROM
+        repairApply ra
+        LEFT JOIN repair_module rm ON rm.repair_apply_id = ra.repair_apply_id
+        <where>
+            <if test="repairPartId != null ">
+                AND rm.repair_part_id = #{repairPartId}
+            </if>
+            AND ra.apply_status IN ( 0, 3 )
+        </where>
+    </select>
+
+</mapper>

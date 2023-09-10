@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.CategoryMapper">
+    <select id="getNum2" resultType="com.ryzw.housemanager.dto.CategoryDto">
+        SELECT
+        category_pid,
+        count(*) AS childNum
+        FROM
+        category
+        WHERE
+        category_pid IN
+        <foreach collection="list" item="categoryPid" separator="," open="(" close=")">
+            #{categoryPid}
+        </foreach>
+        GROUP BY
+        category_pid
+    </select>
+
+    <select id="getNum" resultType="com.ryzw.housemanager.dto.CategoryDto">
+        SELECT
+        category_id
+        FROM
+        category
+        WHERE
+        category_id NOT IN (
+        SELECT
+        category_pid
+        FROM
+        category
+        WHERE
+        category_pid IN
+        <foreach collection="list" item="categoryPid" separator="," open="(" close=")">
+            #{categoryPid}
+        </foreach>
+        GROUP BY
+        category_pid
+        )
+        AND category_id IN
+
+    </select>
+
+    <!--类目树 -->
+    <select id="treeCategory" resultType="com.ryzw.housemanager.dto.CategoryTreeDto">
+        select c.category_code,c.category_name,c.category_unit,count(v.category_code) as num
+        from category c
+        left join category v
+        on c.category_code = v.category_pcode
+        <where>
+          <if test="type != null">
+             and c.category_type = #{type}
+          </if>
+            <choose>
+                <when test="categoryPcode != null and categoryPcode !=''">
+                    and c.category_pcode = #{categoryPcode}
+                </when>
+                <otherwise>
+                    and c.category_pcode = '0'
+                </otherwise>
+            </choose>
+        </where>
+        group by c.category_code,	c.category_name,	c.category_unit
+    </select>
+</mapper>

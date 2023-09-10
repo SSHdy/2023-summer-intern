@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.RecordMapper">
+
+    <select id="recordDetail" resultType="com.ryzw.housemanager.dto.RecordDto">
+        SELECT DISTINCT
+        nested.*
+        FROM
+        (
+            SELECT
+                y.yard_id AS yardId,
+                y.yard_name AS yardName,
+                b.build_id AS buildId,
+                b.build_name buildName,
+                h.house_id AS houseId,
+                h.floor_name AS floorName,
+                h.house_number AS houseName,
+                ur.room_num AS roomNum,
+                h.house_use_area AS houseUseArea,
+                p.specified_area AS specifiedArea,
+                ur.room_num * p.specified_area AS standArea,
+                (
+                ur.room_num * p.specified_area - h.house_use_area
+                ) AS excessiveArea,
+                (
+                ur.room_num * p.specified_area - h.house_use_area
+                ) / (
+                ur.room_num * p.specified_area
+                ) AS excessiveProportion,
+                r.is_record as isRecord
+            FROM
+                record r
+            INNER JOIN house h ON r.house_id = h.house_id
+            LEFT JOIN use_relationship ur ON ur.house_id = h.house_id
+            LEFT JOIN professional p ON p.professional_id = ur.professional_id
+            LEFT JOIN build b ON b.build_id = h.build_id
+            LEFT JOIN yard y ON y.yard_id = b.yard_id
+        ) nested
+        <where>
+            nested.excessiveArea > 0
+           <if test="record.compareArea != null and record.compareArea !=''">
+             and nested.excessiveArea <![CDATA[${record.compareArea}]]> #{record.excessiveArea}
+           </if>
+
+            <if test="record.compareProportion != null and record.compareProportion !=''">
+                and nested.excessiveProportion <![CDATA[${record.compareProportion}]]> #{record.excessiveProportion}
+            </if>
+
+            <if test="record.yardId != null">
+                and nested.yardId = #{record.yardId}
+            </if>
+            <if test="record.buildId != null">
+                and nested.buildId = #{record.buildId}
+            </if>
+            <if test="record.floorName != null">
+                and nested.floorName = #{record.floorName}
+            </if>
+            <if test="record.houseId != null and record.houseId != '' ">
+                and nested.houseId = #{record.houseId}
+            </if>
+            <if test="record.isRecord != null ">
+                and nested.isRecord = #{record.isRecord}
+            </if>
+
+        </where>
+
+    </select>
+</mapper>

@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryzw.housemanager.mapper.FloorDrawingMapper">
+    <resultMap id="findFloorDrawingResultMap" type="com.ryzw.housemanager.dto.FloorDrawingDto">
+        <id column="floorDrawing_id" property="floordrawingId"/>
+        <result column="build_id" property="buildId"/>
+        <result column="floorDrawing_url" property="floordrawingUrl"/>
+        <result column="floor" property="floor"/>
+    </resultMap>
+
+    <select id="findFloorDrawingList" parameterType="java.util.List" resultMap="findFloorDrawingResultMap">
+        SELECT
+        floorDrawing_url
+        FROM floorDrawing
+        WHERE floorDrawing_id IN
+        <foreach collection="floorDrawingIdList" item="floorDrawingId" open="(" close=")" separator=",">
+            #{floorDrawingId}
+        </foreach>
+    </select>
+
+
+    <!--查询信息档案列表-->
+    <select id="messageFilesList" resultType="com.ryzw.housemanager.dto.MessageFilesDto">
+        SELECT DISTINCT
+        y.yard_name,
+        y.yard_administrative_region,
+        y.yard_id,
+        b.build_name,
+        b.build_id,
+        b.build_date,
+        b.structure_type,
+        b.build_area,
+        u.unit_name,
+        r.region_name as yardAdministrativeRegion
+        FROM
+        yard y
+        LEFT JOIN build b ON b.yard_id = y.yard_id
+        LEFT JOIN unit u ON u.unit_id = b.property_unit_id
+        LEFT JOIN floorDrawing f ON f.build_id = b.build_id
+        LEFT JOIN region r ON r.region_id = y.region_id
+        <where>
+            <if test="buildAndYardVo.yardIdList !=null and buildAndYardVo.yardIdList.size() >0">
+                and y.yard_id in
+                <foreach collection="buildAndYardVo.yardIdList" item="item" open="(" close=")" separator=",">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="buildAndYardVo.buildIdList !=null and buildAndYardVo.buildIdList.size() >0">
+                and b.build_id in
+                <foreach collection="buildAndYardVo.buildIdList" item="item" open="(" close=")" separator=",">
+                    #{item}
+                </foreach>
+            </if>
+            and y.type = 1
+        </where>
+    </select>
+
+    <!--查询某一楼层房间数量与面积-->
+    <select id="selectHouseNum" resultType="com.ryzw.housemanager.dto.FloorDataDto">
+        SELECT
+        count(h.house_id) as houseNum,
+        sum(h.house_use_area) as sumHouseArea
+        FROM
+        house h
+        <where>
+            <if test="buildAndYardVo.buildId ">
+                and h.build_id = #{buildAndYardVo.buildId}
+            </if>
+            <if test="buildAndYardVo.floorName">
+                and h.floor_name = #{buildAndYardVo.floorName}
+            </if>
+        </where>
+    </select>
+
+    <!--查询领导人数-->
+    <select id="selectLeaderHouse" resultType="java.lang.Integer">
+        SELECT
+        count(l.leadingOffice_id)
+        FROM
+        leadingOffice l
+        <where>
+            <if test="buildAndYardVo.buildId !=null and buildAndYardVo.floorName !=null">
+                and l.house_id IN (
+                SELECT
+                h.house_id
+                FROM
+                house h
+                WHERE
+                h.build_id = #{buildAndYardVo.buildId}
+                AND h.floor_name = #{buildAndYardVo.floorName}
+                )
+            </if>
+            <if test="isLeader == 0">
+                and l.is_leading = 0
+            </if>
+        </where>
+    </select>
+
+    <!--查询办公用房数量及面积-->
+    <select id="selectOfficeNum" resultType="java.util.Map">
+        SELECT
+        count( h.house_id ) AS officeNum,
+        SUM( h.house_use_area ) AS officeArea
+        FROM
+        house h
+        LEFT JOIN houseType ht on ht.houseType_id = h.houseType_id
+        <where>
+            <if test="buildAndYardVo.buildId !=null and buildAndYardVo.floorName !=null">
+                and h.house_id IN (
+                SELECT
+                h.house_id
+                FROM
+                house h
+                WHERE
+                h.build_id = #{buildAndYardVo.buildId}
+                AND h.floor_name = #{buildAndYardVo.floorName}
+                )
+            </if>
+            and ht.houseType_id = 1
+        </where>
+    </select>
+
+</mapper>
